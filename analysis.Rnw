@@ -1,0 +1,66 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amscd}
+\usepackage[tableposition=top]{caption}
+\usepackage{ifthen}
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+
+\newcommand{\R}{\textsf{R}}
+\newcommand{\dsm}{\texttt{dsm}}
+
+\begin{document}
+
+\title{Example \textit{dsm} analysis}
+\author{David L. Miller}
+\maketitle
+
+\section{Preamble}
+
+This is a Sweave document. The source for it contains everything you need to reproduce the analysis given here (aside from the data). The most recent version of this document can always be found at URL.
+
+The analysis is based on a data set which is shipped with Distance 6.0. For convenience the data are bundled in an \R\ friendly format, although all of the code necessary for creating the data from the Distance project files is available at the above URL.
+
+
+\section{Getting the data into \R}
+
+
+\subsection{Survey area}
+
+The \R\ package \texttt{maptools}\footnote{\texttt{maptools} relies on GDAL, instructions for how to get this to work on Mac OS can be found at \url{http://lostingeospace.blogspot.com/2011/08/rgeos-on-macos-x.html}} can be used to load the survey region shape file.
+<<>>=
+library(maptools)
+survey.area<-readShapeSpatial("data/Study_ar")
+survey.area<-data.frame(survey.area@polygons[[1]]@Polygons[[1]]@coords)
+names(survey.area)<-c("latitude","longitude")
+@
+Note that we ignore the file type extension in the call to \texttt{readShapeSpatial} and then we discard most of the information in the returned object, since we just require the latitude and longitude of points which bound the survey region.
+
+\subsection{Observation and segment data}
+
+All of the data for this analysis has been nicely pre-formatted and can be found in \texttt{data/dolphins.RData}. Loading up that data, we can see that it contains three data frames (along with the survey region data we loaded above):
+<<>>=
+load("data/dolphins.RData")
+ls()
+@
+Figure \ref{areawithtransects} shows the survey area with the transect lines overlayed.
+
+
+
+\begin{figure}
+\begin{center}
+<<label=surveyarea,fig=TRUE,echo=FALSE>>=
+plot(survey.area$latitude,survey.area$longitude, asp=1, type="l")
+for(i in unique(segdata$Transect.Label)){
+lines(segdata$longitude[segdata$Transect.Label==i], 
+           segdata$latitude[segdata$Transect.Label==i])
+}
+@
+\end{center}
+\caption{The survey area with transect lines overlayed}
+\label{areawithtransects}
+\end{figure}
+
+\end{document}
+

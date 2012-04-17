@@ -22,7 +22,7 @@ obs.tmp <- mex.obs[6:nrow(mex.obs),]
 obs.tmp <- obs.tmp[obs.tmp[,24]!="",]
 obsdata <- data.frame(
                       object=1:nrow(obs.tmp),
-                      Segment.Label=as.character(obs.tmp[,13]),
+                      Sample.Label=as.character(obs.tmp[,13]),
                       group.size=as.numeric(as.character(obs.tmp[,21])),
                       distance=as.numeric(as.character(obs.tmp[,19]))
                      )
@@ -44,14 +44,14 @@ segdata <- data.frame(
                       longitude=as.numeric(as.character(seg.tmp[,16])),
                       Effort=as.numeric(as.character(seg.tmp[,14])),
                       Transect.Label=as.character(seg.tmp[,9]),
-                      Segment.Label=as.character(seg.tmp[,13]),
+                      Sample.Label=as.character(seg.tmp[,13]),
                       depth=as.numeric(as.character(seg.tmp[,17]))
                      )
 
 
 # create what we want for the mrds analysis
 distdata <- obsdata
-distdata$Segment.Label <- NULL
+distdata$Sample.Label <- NULL
 distdata$detected <- rep(1,nrow(distdata))
 distdata$beaufort <- as.numeric(as.character(obs.tmp[,22]))
 # the group size must be called size for mrds

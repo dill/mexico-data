@@ -173,7 +173,7 @@ plot(hn.model)
 
 \section{Spatial analysis}
 
-Before performing any actual analysis, the data must be segmented. This consists of chopping up the transects and attributing counts to each of the segments.
+Before performing any actual analysis, the data must be segmented. This consists of chopping up the transects and attributing counts to each of the segments. Luckily these data are already segmented, so we can use this data as-is.
 
 The functions used to fit a spatial model can be found in the \R\ package \dsm\footnote{Available at \url{http://github.com/dill/dsm}.}.
 
@@ -181,16 +181,17 @@ The functions used to fit a spatial model can be found in the \R\ package \dsm\f
 library(dsm)
 @
 
-
-
-
-
 \subsection{A simple model}
 count, x,y
 
 <<>>=
+segdata$y<-segdata$longitude
+segdata$x<-segdata$latitude
+@
+
+<<>>=
 # need to do something with convert.units!
-#spat.mod<-dsm.fit(hn.model$ddf, response="group", formula=count~s(latitude,longitude),obsdata,segdata)
+spat.mod<-dsm.fit(hn.model$ddf, response="group", formula=~s(x,y),obsdata=obsdata,segdata=segdata)
 @
 
 what's wrong with this model?

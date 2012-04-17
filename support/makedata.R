@@ -53,7 +53,14 @@ segdata <- data.frame(
 distdata <- obsdata
 distdata$Segment.Label <- NULL
 distdata$detected <- rep(1,nrow(distdata))
-distdata$beaufort <- rep(1,nrow(distdata))
+distdata$beaufort <- as.numeric(as.character(obs.tmp[,22]))
+# the group size must be called size for mrds
+distdata$size <- distdata$group.size
+distdata$group.size <- NULL
+
+# include the lat/long but just for plotting
+distdata$latitude <- as.numeric(as.character(obs.tmp[,15]))
+distdata$longitude <- as.numeric(as.character(obs.tmp[,16]))
 
 # save everything to file
 save(segdata,obsdata,distdata,file="data/dolphins.RData")

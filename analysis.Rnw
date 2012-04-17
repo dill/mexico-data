@@ -22,7 +22,6 @@ This is a Sweave document. The source for it contains everything you need to rep
 
 The analysis is based on a data set which is shipped with Distance 6.0. For convenience the data are bundled in an \R\ friendly format, although all of the code necessary for creating the data from the Distance project files is available at the above URL.
 
-
 \section{Getting the data into \R}
 
 
@@ -39,28 +38,183 @@ Note that we ignore the file type extension in the call to \texttt{readShapeSpat
 
 \subsection{Observation and segment data}
 
-All of the data for this analysis has been nicely pre-formatted and can be found in \texttt{data/dolphins.RData}. Loading up that data, we can see that it contains three data frames (along with the survey region data we loaded above):
+All of the data for this analysis has been nicely pre-formatted and can be found in \texttt{data/dolphins.RData}. Loading up that data, we can see that it contains three data frames, the first few lines of each are shown:
 <<>>=
 load("data/dolphins.RData")
-ls()
+head(segdata)
+head(distdata)
+head(obsdata)
 @
-Figure \ref{areawithtransects} shows the survey area with the transect lines overlayed.
+\texttt{segdata} holds the segment data (), \texttt{distdata} holds the distance sampling data and \texttt{obsdata} holds the ...
+
+Figure \ref{areawithtransects} shows the survey area with the transect lines overlaid (using data from \texttt{segdata}).
 
 
 
-\begin{figure}
+\begin{figure}[t]
 \begin{center}
 <<label=surveyarea,fig=TRUE,echo=FALSE>>=
-plot(survey.area$latitude,survey.area$longitude, asp=1, type="l")
+plot(survey.area$latitude,survey.area$longitude, asp=1, type="l", xlab="Latitude", ylab="Longitude")
 for(i in unique(segdata$Transect.Label)){
 lines(segdata$longitude[segdata$Transect.Label==i], 
-           segdata$latitude[segdata$Transect.Label==i])
+           segdata$latitude[segdata$Transect.Label==i], col="grey")
 }
 @
 \end{center}
 \caption{The survey area with transect lines overlayed}
 \label{areawithtransects}
 \end{figure}
+
+
+\subsection{Converting units}
+
+equation from dht
+
+lat/long to meters
+
+
+\section{Exploratory data analysis}
+
+Before proceeding with any further analysis, we first have a look at the raw data. 
+
+
+\subsection{Distance data}
+
+Figure \ref{EDA-plots} shows a histogram of the observed distances, histogram of group size and the relationship between observed distance and observed group size. The plots show that there is some relationship between size and observed distance to be explored since as one would expect, smaller groups seem to be seen at smaller distances and larger groups further away. This relationship can be seen more clearly in the bottom right plot, where the observation with group size 650 was removed.
+
+\begin{figure}[t]
+\begin{center}
+<<label=rawdists,fig=TRUE,echo=FALSE>>=
+o<-par()
+par(mfrow=c(2,2))
+
+# histograms
+hist(distdata$distance,main="",xlab="Distance (m)")
+hist(distdata$size,main="",xlab="Group size")
+
+# plots of distance vs. size
+plot(distdata$distance,distdata$size, main="",xlab="Distance (m)",ylab="Group size",pch=19,cex=0.5,col=rgb(0.74,0.74,0.74,0.7))
+
+# loess
+l.dat<-seq(0,8000,len=1000)
+lo<-loess(size~distance, distdata)
+lines(l.dat,predict(lo,l.dat))
+
+plot(distdata$distance[distdata$size<400],distdata$size[distdata$size<400], main="",xlab="Distance (m)",ylab="Group size",pch=19,cex=0.5,col=rgb(0.74,0.74,0.74,0.7))
+
+lo<-loess(size~distance, distdata[distdata$size<400,])
+lines(l.dat,predict(lo,l.dat))
+
+par(o)
+@
+\end{center}
+\caption{Exploratory plot of the data. Top row, left to right: histograms of distance and group size; bottom row: plot of distance against group size and the same plot with the largest group size removed. The bottom row also features a LOESS smooth for the displayed data.}
+\label{EDA-plots}
+\end{figure}
+
+\textbf{TODO}: beaufort!
+
+
+\subsection{Spatial data}
+
+Looking separately at the at the spatial data without thinking about the distances, we can see the distribution of group size in space in Figure \ref{count-spatplot}
+
+
+\begin{figure}[t]
+\begin{center}
+<<label=count-spatplot,fig=TRUE,echo=FALSE>>=
+plot(survey.area$latitude,survey.area$longitude, asp=1, type="l", xlab="Latitude", ylab="Longitude")
+for(i in unique(segdata$Transect.Label)){
+lines(segdata$longitude[segdata$Transect.Label==i], 
+           segdata$latitude[segdata$Transect.Label==i], col="grey")
+}
+points(distdata$longitude,distdata$latitude,cex=distdata$size/200,pch=19,col=rgb(0.74,0,0,0.7))
+@
+\end{center}
+\caption{The survey area point size is proportional to the group size for each observation.}
+\label{count-spatplot}
+\end{figure}
+
+
+
+
+
+\section{Estimating the detection function}
+
+
+
+Using the \texttt{ds} function in \texttt{Distance}\footnote{Available at \url{http://github.com/dill/Distance}.}, we can automatically select the number of adjustments that we need for the detection function.
+
+<<>>=
+library(Distance)
+hn.model<-ds(distdata,max(distdata$distance),monotonicity="strict")
+summary(hn.model)
+@
+
+<<>>=
+hr.model<-ds(distdata,max(distdata$distance),monotonicity="strict",key="hr", adjustment="poly")
+summary(hr.model)
+@
+
+In neither case were adjustments selected and the models have similar AICs (half-normal, \Sexpr{round(hn.model$ddf$criterion,2)}; hazard-rate, \Sexpr{round(hr.model$ddf$criterion,2)}), so we choose the half-normal since it uses fewer parameters. Figure \ref{hn-detfct} shows a plot of the fitted model.
+
+\begin{figure}[t]
+\begin{center}
+<<label=hn-detfct,fig=TRUE,echo=FALSE>>=
+plot(hn.model)
+@
+\end{center}
+\caption{Plot of the fitted detection function when a half-normal key function was used.}
+\label{hn-detfct}
+\end{figure}
+
+
+\textbf{TODO}: size effect, beaufort effect?
+
+\section{Spatial analysis}
+
+Before performing any actual analysis, the data must be segmented. This consists of chopping up the transects and attributing counts to each of the segments.
+
+The functions used to fit a spatial model can be found in the \R\ package \dsm\footnote{Available at \url{http://github.com/dill/dsm}.}.
+
+<<>>=
+library(dsm)
+@
+
+
+
+
+
+\subsection{A simple model}
+count, x,y
+
+<<>>=
+# need to do something with convert.units!
+#spat.mod<-dsm.fit(hn.model$ddf, response="group", formula=count~s(latitude,longitude),obsdata,segdata)
+@
+
+what's wrong with this model?
+
+\subsection{Adding spatial covariates}
+
+
+\subsection{Adding covariates to the detection function}
+
+
+
+\subsection{A more complicated model}
+
+soap, Tweedie
+
+
+
+
+
+
+
+
+
+
 
 \end{document}
 

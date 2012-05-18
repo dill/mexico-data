@@ -8,11 +8,12 @@
 mex.obs<-read.csv("data/csv/mexico-observation.csv",header=FALSE)
 mex.seg<-read.csv("data/csv/mexico-segment.csv",header=FALSE)
 #mex.tran<-read.csv("data/csv/mexico-transect.csv",header=FALSE)
+mex.pred <- read.table("data/csv/mexico-pred.txt",skip=5)
 
 # create obsdata
 # * ``object`` - object id
 # * ``Segment.Label`` - the segment the observation occurred in
-# * ``group.size`` - group size for the observation
+# * ``size`` - group size for the observation
 # * ``distance`` - perpendicular/radial distance to observation
 
 # get rid of the column titles put there by Distance
@@ -23,8 +24,9 @@ obs.tmp <- obs.tmp[obs.tmp[,24]!="",]
 obsdata <- data.frame(
                       object=1:nrow(obs.tmp),
                       Sample.Label=as.character(obs.tmp[,13]),
-                      group.size=as.numeric(as.character(obs.tmp[,21])),
-                      distance=as.numeric(as.character(obs.tmp[,19]))
+                      size=as.numeric(as.character(obs.tmp[,21])),
+                      distance=as.numeric(as.character(obs.tmp[,19])),
+                      Effort=as.numeric(as.character(obs.tmp[,14]))
                      )
 
 # create segdata
@@ -45,7 +47,7 @@ segdata <- data.frame(
                       Effort=as.numeric(as.character(seg.tmp[,14])),
                       Transect.Label=as.character(seg.tmp[,9]),
                       Sample.Label=as.character(seg.tmp[,13]),
-                      depth=as.numeric(as.character(seg.tmp[,17]))
+                      depth=as.double(as.numeric(as.character(seg.tmp[,17])))
                      )
 
 
@@ -54,16 +56,17 @@ distdata <- obsdata
 distdata$Sample.Label <- NULL
 distdata$detected <- rep(1,nrow(distdata))
 distdata$beaufort <- as.numeric(as.character(obs.tmp[,22]))
-# the group size must be called size for mrds
-distdata$size <- distdata$group.size
-distdata$group.size <- NULL
 
 # include the lat/long but just for plotting
 distdata$latitude <- as.numeric(as.character(obs.tmp[,15]))
 distdata$longitude <- as.numeric(as.character(obs.tmp[,16]))
 
+
+# prediction data
+preddata<-data.frame(latitude=mex.pred[,7],
+                     longitude=mex.pred[,6],
+                     depth=as.double(mex.pred[,8]))
+
+
 # save everything to file
-save(segdata,obsdata,distdata,file="data/dolphins.RData")
-
-
-
+save(segdata,obsdata,distdata,preddata,file="data/dolphins.RData")

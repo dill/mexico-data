@@ -1,0 +1,476 @@
+`r opts_chunk$set(fig.width=5, fig.height=5, fig.path='knitr-figs/')`
+
+# New features in dsm
+
+## Preamble
+
+This is a `knitr` document. The source for it contains everything you need to reproduce the analysis given here (aside from the data). The most recent version of this document can always be found at URL.
+
+Before we start, the necessary `R` libraries must be loaded:
+
+``` {r}
+library(ggplot2)
+library(vcd)
+gg.opts <- opts(panel.grid.major=theme_blank(), 
+panel.grid.minor=theme_blank(), 
+panel.background=theme_rect())
+# maps
+library(maps)
+# conversion between latitude/longitude and Northings/Eastings
+source("latlong2km.R")
+# make the results reproducable
+set.seed(123)
+```
+
+
+
+The analysis is based on a dataset which is shipped with Distance 6.0. For convenience the data are bundled in an `R` friendly format, although all of the code necessary for creating the data from the Distance project files is available at the above URL.
+
+The intention here is to highlight the features of the `dsm` package, rather than perform a full analysis of the data. For that reason, some important steps (such as model checking) are not fully explored.
+
+## Getting the data into `R`
+
+
+### Survey area
+
+The `R` package `maptools`[^ref:maptools] can be used to load the survey region shape file.
+``` {r}
+library(maptools)
+survey.area<-readShapeSpatial("data/Study_ar")
+survey.area<-data.frame(survey.area@polygons[[1]]@Polygons[[1]]@coords)
+names(survey.area)<-c("longitude","latitude")
+```
+
+Note that we ignore the file type extension in the call to `readShapeSpatial` and then we discard most of the information in the returned object, since we just require the latitude and longitude of points which bound the survey region.
+
+### Observation and segment data
+
+All of the data for this analysis has been nicely pre-formatted and can be found in `data/dolphins.RData`. Loading up that data, we can see that it contains three data frames, the first few lines of each are shown:
+``` {r}
+load("data/dolphins.RData")
+head(segdata)
+head(distdata)
+head(obsdata)
+head(preddata)
+```
+`segdata` holds the segment data, `distdata` holds the distance sampling data, `obsdata` holds the observation data and `preddata` holds the prediction grid.
+
+Figure \ref{areawithtransects} shows the survey area with the transect lines overlaid (using data from `segdata`).
+
+
+``` {r areawithtransects}
+p<-qplot(data=survey.area,x=longitude,y=latitude,geom="polygon" , 
+ylab="Latitude", xlab="Longitude", alpha=I(0.7))
+p <- p + coord_equal()
+p<-p+gg.opts
+
+p <- p + geom_line(aes(longitude,latitude,group=Transect.Label),data=segdata)
+
+print(p)
+```
+The survey area with transect lines overlayed
+
+
+### Converting units
+
+Before going any further we convert latitiude/longitude to meters. Having all of our measurements be in SI units removes the need for conversion later, making life much easier. For the survey area, we first convert to Northings and Eastings (kilometres from -88.31951 longitude, 27.01594 latitude), then multiplying up by 1000 to get the result in metres. 
+``` {r}
+lon0 <- -88.31951
+lat0 <- 27.01594
+
+sa.tmp <- latlong2km(survey.area$longitude, survey.area$latitude, 
+lon0=lon0, lat0=lat0)
+
+survey.area <- data.frame(x=1000*sa.tmp$km.e, y=1000*sa.tmp$km.n)
+
+rm(sa.tmp)
+```
+Note that we also now name the directions `x` and `y`, to avoid confusion.
+
+In the `segdata` frame, the `Effort` is recorded in kilometres, so just needs to be multiplied up. The latitude and longitude also need to be converted to metres:
+``` {r}
+segdata$Effort<-segdata$Effort*1000
+
+seg.tmp <- latlong2km(segdata$longitude, segdata$latitude, lon0=lon0, lat0=lat0)
+
+segdata <- cbind(segdata, x=1000*seg.tmp$km.e, y=1000*seg.tmp$km.n)
+rm(seg.tmp)
+```
+
+For the `distdata` frame, only the latitude and longitude must be changed (these are only used for plotting, below):
+``` {r}
+ds.tmp <- latlong2km(distdata$longitude, distdata$latitude, lon0=lon0, lat0=lat0)
+
+distdata <- cbind(distdata, x=1000*ds.tmp$km.e, y=1000*ds.tmp$km.n)
+rm(ds.tmp)
+```
+
+For `obsdata`, only the effort must be converted:
+``` {r}
+obsdata$Effort<-obsdata$Effort*1000
+```
+
+
+Finally for `preddata`:
+``` {r}
+pred.tmp <- latlong2km(preddata$longitude, preddata$latitude, lon0=lon0, lat0=lat0)
+
+preddata <- cbind(preddata, x=1000*pred.tmp$km.e, y=1000*pred.tmp$km.n)
+rm(pred.tmp)
+```
+
+Note that as well as making calculations easier, we note that using latitude and longitude when performing spatial smoothing can be problematic when certain smoother bases are used. In particular when isotropic bases are used the non-isotropic nature of latitude and longitude (moving one degree in one direction is not the same as moving one degree in the other _and_ the size of the degrees changes as one moves around the globe.
+
+With these quantities converted, we can now proceed to look at the data.
+
+##Exploratory data analysis
+
+### Distance data
+
+The top panels of Figure \ref{EDA-plots} show histograms of observed distances and group size and the bottom panels show the relationship between observed distance and observed group size, and the relationship between observed distance and Beaufort sea state. The plots show that there is some relationship between size and observed distance to be explored since as one would expect, smaller groups seem to be seen at smaller distances and larger groups further away. We can also see the effect of increasing sea state on observed distances.
+
+``` {r EDA-plots}
+o<-par("mfrow")
+par(mfrow=c(2,2))
+
+# histograms
+hist(distdata$distance,main="",xlab="Distance (m)")
+hist(distdata$size,main="",xlab="Group size")
+
+# plots of distance vs. size
+plot(distdata$distance,distdata$size, main="",xlab="Distance (m)",ylab="Group size",pch=19,cex=0.5,col=rgb(0.74,0.74,0.74,0.7))
+
+# lm fit
+l.dat<-data.frame(distance=seq(0,8000,len=1000))
+lo<-lm(size~distance, data=distdata)
+lines(l.dat$distance,as.vector(predict(lo,l.dat)))
+
+plot(distdata$distance,distdata$beaufort, main="",xlab="Distance (m)",ylab="Beaufort sea state",pch=19,cex=0.5,col=rgb(0.74,0.74,0.74,0.7))
+
+par(o)
+```
+Exploratory plot of the data. Top row, left to right: histograms of distance and group size; bottom row: plot of distance against group size and plot of distances against Beaufort sea state.
+
+
+
+### Spatial data
+
+Looking separately at the at the spatial data without thinking about the distances, we can see the distribution of group size in space in Figure \ref{count-spatplot}. In the plot the size of the circles indicates the size of the group in the observation, we can see that there are rather large areas with no observations, which might cause our variance estimates to be rather large.
+
+``` {r count-spatplot}
+p<-qplot(data=survey.area,x=x,y=y,geom="polygon" , ylab="y", xlab="x", alpha=I(0.7))
+p<-p+gg.opts
+p <- p + coord_equal()
+p <- p + geom_line(aes(x, y, group=Transect.Label),data=segdata)
+p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="red",alpha=I(0.7))
+print(p)
+```
+The survey area point size is proportional to the group size for each observation.
+
+## Estimating the detection function
+
+Using the `ds` function in `Distance`[^ref:Distance], we can automatically select the number of adjustments that we need for the detection function.
+
+First, loading the library:
+``` {r}
+library(Distance)
+```
+
+We can then fit a detection function with half-normal key and selecting cosine adjustments using AIC (the default behaviour), we also enforce a monotonically decreasing shape for the detection function:
+``` {r} 
+hn.model<-ds(distdata,max(distdata$distance),monotonicity="strict")
+summary(hn.model)
+```
+
+Then fitting a hazard-rate detection function with polynomial adjustments (again selected by AIC with montonicity constraints in place:
+``` {r}
+#hr.model<-ds(distdata,max(distdata$distance),monotonicity="strict",
+#key="hr", adjustment="poly")
+#summary(hr.model)
+```
+
+In neither case were adjustments selected and the models have similar AICs:
+
+``` {r}
+hn.model$ddf$criterion 
+#hr.model$ddf$criterion
+```
+
+so we choose the half-normal since it uses fewer parameters. Figure \ref{hn-detfct} shows a plot of the fitted model. Note that the line `N in covered region` refers to groups rather than individuals.
+
+``` {r hn-detfct}
+plot(hn.model)
+```
+Plot of the fitted detection function when a half-normal key function was used.
+
+
+## Spatial analysis
+
+Before fitting a `dsm` model, the data must be segmented; this consists of chopping up the transects and attributing counts to each of the segments. Luckily these data have already been segmented in Distance, so we can use this data as-is.
+
+The functions used to fit a spatial model can all be found in the `R` package `dsm`[^ref:dsm].
+
+``` {r}
+library(dsm)
+```
+
+### A simple model
+
+We begin with a very simple model. We assume that the counts in each segment are quasi-Poisson distributed and that they are a smooth function of their spatial coordinates (note that the formula is exactly as one would specify to `gam` in `mgcv`). Running the model:
+``` {r}
+mod1<-dsm.fit(hn.model$ddf, response="group", formula=~s(x,y),
+obsdata=obsdata,segdata=segdata)
+summary(mod1$result)
+```
+
+Create the offset --  the logarithm of the area of each cell, multiplied by the probability of detection.
+```{r}
+# need to faff around a bit here for plotting since we need the width and height of each cell
+lr <- c(preddata$longitude-1/6, preddata$longitude+1/6)
+tb <- c(preddata$latitude-1/6, preddata$latitude+1/6)
+
+lr.tmp <- latlong2km(lr, rep(preddata$latitude,2), lon0=lon0, lat0=lat0)
+tb.tmp <- latlong2km(rep(preddata$longitude,2), tb, lon0=lon0, lat0=lat0)
+
+preddata$width <- 1000*
+(lr.tmp$km.e[(length(preddata$latitude)+1):length(lr.tmp$km.e)]-
+lr.tmp$km.e[1:length(preddata$latitude)])
+preddata$height <- 1000*
+(tb.tmp$km.n[(length(preddata$latitude)+1):length(tb.tmp$km.n)]-
+tb.tmp$km.n[1:length(preddata$latitude)])
+
+rm(lr, tb, lr.tmp, tb.tmp)
+
+off.set <- log(fitted(hn.model$ddf)[1]*preddata$width*preddata$height)
+```
+
+
+We can then make the predictions over the grid we imported above.
+``` {r}
+mod1.pred<-dsm.predict(mod1, preddata,off=off.set)
+```
+Figure \ref{mod1-preds} shows a map of the predicted abundance. Before plotting, we bind on the predicitons to the data used to create them:
+``` {r}
+pp<-cbind(preddata,mod1.pred)
+```
+We can calculate abundance (of individuals) over the survey area by simply summing these predictions:
+``` {r}
+sum(mod1.pred)
+```
+
+
+``` {r mod1-preds}
+p<-ggplot(pp)+gg.opts
+p<-p+geom_tile(aes(x=x,y=y,fill=mod1.pred,width=width,height=height))
+p <- p + coord_equal()
+p <- p + scale_fill_gradientn(colours=heat_hcl(1000),limits=c(0,1000))
+p<-p+geom_path(aes(x=x, y=y),data=survey.area)
+print(p)
+```
+Predicted density surface for `mod1`. Quartiles for the predicted values were:
+
+``` {r}
+quantile(pp$mod1.pred)
+```
+
+
+``` {r mod1-check}
+dsm.check(mod1)
+```
+Diagnostic plots for `mod1`.
+
+Figure \ref{mod1-check} shows diagnostic plots fo the model.
+
+
+We can calculate uncertainty using three different methods in `dsm`, the first two use a moving block bootstrap and the third using the method proposed in Williams et al (2011). 
+
+``` {r}
+# median # segs per transect is 9
+#for(trans in unique(segdata$Transect.Label)){
+#cat(sum(segdata$Transect.Label==trans),"\n")
+#}
+```
+
+
+Using a regular moving block bootstrap takes a rather long time, but can be achieved with the following:
+``` {r cache=TRUE }
+offset <- fitted(hn.model$ddf)[1]*pp$width*pp$height
+block.size<-4
+mod1.movblk <- dsm.var.movblk(mod1, preddata, 2,
+                              off.set=offset,
+                              block.size=block.size,
+                              ds.uncertainty=FALSE)
+```
+where the first argument specifies the number of bootstrap resamples, the `block.size` argument gives the size of the moving blocks and `cell.size` gives the effective area of the prediction cells. Variance estimates found using this method do not take into account uncertainty from the detection function (uncertainty in estimating the effective strip widths and hence the prediction grid areas), so to include this uncertainty the delta method must be used. 
+``` {r}
+cvp.sq <- (summary(hn.model$ddf)$average.p.se/summary(hn.model$ddf)$average.p)^2
+cvNbs.sq <- (sqrt(trim.var(mod1.movblk$study.area.total[is.finite(mod1.movblk$study.area.total)]))/mean(mod1.movblk$study.area.total[is.finite(mod1.movblk$study.area.total)],na.rm=TRUE))^2
+cvN <- sqrt(cvp.sq+cvNbs.sq)
+mod1.movblk.var <- (cvN*sum(mod1.pred,na.rm=TRUE))^2
+mod1.movblk.var
+```
+
+Note that the delta method assumes that the two variances that it combines are independent, this assumption is clearly violated here.
+
+To include uncertainty in the detection function we can set the `ds.uncertainty` argument to `TRUE`. This re-samples the distance data in each bootstrap round, and re-fitting the detection function. Re-running the bootstrap with the detection function uncertainty included can be achieved using the following code:
+``` {r cache=TRUE}
+mod1.movblk.dsu <- dsm.var.movblk(mod1, preddata, 2,
+                                  off.set=offset,
+                                  block.size=block.size,
+                                  ds.uncertainty=TRUE)
+```
+To calculate the variances for the second method, we don't need to invoke the delta method, since the detection function uncertainty is included. We can simply call `var()` on the `study.area.total` element of the result. This entry gives the estimated abundances within the prediction grid for each bootstrap round. However it is possible that there may be large outliers in the bootstrap results, which can be removed using the `trim.var` function in `dsm`. This gives the trimmed variance. We'll compare both untrimmed and trimmed for both methods.
+
+
+``` {r}
+#var(mod1.movblk.dsu$study.area.total)
+#trim.var(mod1.movblk.dsu$study.area.total)
+```
+
+
+Alternatively, we can use the "random effects trick" of Williams et al (2011), which accounts for uncertainty in the effective strip width by including its derivative in as an extra offset in the model. This method is henceforth known as "variance propogation".
+``` {r}
+mod1.varprop<-dsm.var.prop(mod1,pred.data=preddata,offset=preddata$width*preddata$height)
+```
+The variance is now recorded in the `$pred.var` element of the returned list:
+``` {r}
+mod1.varprop$pred.var
+```
+This 
+
+
+
+
+
+### Adding another covariate to the spatial model
+
+The data set also contains a `depth` covariate, which we can include in the model very simply:
+``` {r}
+mod2<-dsm.fit(hn.model$ddf, response="group", formula=~s(x,y)+s(depth), obsdata=obsdata,segdata=segdata)
+summary(mod2$result)
+```
+
+
+``` {r mod2-preds}
+mod2.pred<-dsm.predict(mod2, preddata,off=off.set)
+pp<-cbind(preddata,mod2.pred)
+p<-ggplot(pp)+gg.opts
+p<-p+geom_tile(aes(x=x,y=y,fill=mod2.pred,width=width,height=height))
+p <- p + coord_equal()
+p <- p + scale_fill_gradientn(colours=heat_hcl(20),limits=c(0,1000))
+p<-p+geom_path(aes(x=x, y=y),data=survey.area)
+print(p)
+```
+Predicted density surface for `mod2`. Quartiles for the predicted values were:
+``` {r}
+quantile(pp$mod2.pred)
+```
+The grey area shows prediction grid cells where the predicted value was outside of the legend range (ie. greater than 1000).
+
+
+
+### A more complicated model
+
+***Tweedie***
+
+Other response distributions can be used, for example the Tweedie distribution. If the Tweedie is used, then the `p` parameter must be specified. Mark Bravington (via personal communication) suggests the use of `p=1.2` for marine mammal work. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the AIC of the resulting fits.
+``` {r}
+mod3<-dsm.fit(hn.model$ddf, response="group", formula=~s(x,y), 
+		obsdata=obsdata,segdata=segdata,
+		model.defn=list(fn="gam",family="Tweedie",family.pars=list(p=1.2)))
+summary(mod3$result)
+```
+
+
+***Soap film smoothing***
+
+
+In order to use a soap film smoother for the spatial part of the model we must create a set of knots that the smoother can use. This is easily done using the `makesoapgrid()`) function in `dsm`:
+``` {r}
+soap.knots <- make_soap_grid(survey.area,c(11,6))
+```
+
+As we saw in Figure \ref{areawithtransects}, some of the transect lines are outside of the survey area, for now let us remove them:
+``` {r}
+onoff <- inSide(x=segdata$x, y=segdata$y, bnd=survey.area)
+segdata <- segdata[onoff,]
+```
+
+We can run a model with both the `depth` covariate along with a spatial smooth utilising the soap film smoother:
+``` {r}
+mod4<-dsm.fit(hn.model$ddf, response="group", 
+formula=~s(x,y, bs="so",k=10,xt=list(bnd=list(survey.area)))+s(depth), 
+obsdata=obsdata, segdata=segdata, 
+model.defn=list(fn="gam",family="quasipoisson",knots=soap.knots))
+summary(mod4$result)
+```
+Figure \ref{mod4-preds} shows the predictions from the model. Comparing this to Figure \ref{mod2-preds} we can see that the soap film has prevented some of the extreme values (especially in the lower right corner of the survey area).
+
+``` {r mod4-pred}
+mod4.pred<-dsm.predict(mod4,preddata, off=off.set)
+pp<-cbind(preddata,mod4.pred)
+
+p<-ggplot(pp)+gg.opts
+p<-p+geom_tile(aes(x=x,y=y,fill=mod4.pred,width=width,height=height))
+p <- p + coord_equal()
+p <- p + scale_fill_gradientn(colours=heat_hcl(20),limit=c(0,1000))
+p<-p+geom_path(aes(x=x, y=y),data=survey.area)
+print(p)
+```
+Predicted density surface for `mod4`.
+
+
+## Adding covariates to the detection function
+
+It is common to include covariates in the detection function (so-called Multiple Covariate Distance Sampling or MCDS). In this dataset there is one covariate which is collected for each individual, that is the Beaufort sea state. We can fit (hazard-rate and half-normal) detection function(s) with the sea state included as a covariate as follows:
+``` {r}
+hr.beau.model<-ds(distdata,max(distdata$distance),formula=~as.factor(beaufort),
+key="hr", adjustment=NULL)
+summary(hr.beau.model)
+hn.beau.model<-ds(distdata,max(distdata$distance),formula=~as.factor(beaufort),
+key="hn", adjustment=NULL)
+summary(hn.beau.model)
+```
+Note that we opt to not sure adjustments with the covariates since we cannot ensure that the detection function will remain monotonic if both covariates and adjustment terms are used.
+
+The above output shows that there were some problems with fitting the half-normal (the Hessian was singular, possibly indicating that there were convergence issues). For that reason (and for variety) we use the hazard rate model.
+
+We can build the spatial model in a similar way to the way we did when there were no covariates in the model:
+``` {r}
+mod5<-dsm.fit(hr.beau.model$ddf, response="group.est", formula=~s(x,y),
+obsdata=obsdata,segdata=segdata)
+summary(mod5$result)
+```
+Note that in this case the response is `group.est` since we are estimating the group sizes using the Horvitz-Thompson estimator. Figure \ref{mod5-preds} shows predictions for this model.
+
+Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method of Williams et al (2010), but rather must resort to the moving block bootstrap. Other than this, all of the above models can be fitted.
+
+
+``` {r mod5-pred}
+mod5.pred<-dsm.predict(mod5,preddata, off=off.set)
+pp<-cbind(preddata,mod5.pred)
+
+p <- ggplot(pp)+gg.opts
+p <- p + geom_tile(aes(x=x,y=y,fill=mod5.pred,width=width,height=height))
+p <- p + coord_equal()
+p <- p + scale_fill_gradientn(colours=heat_hcl(20),limit=c(0,1000))
+p <- p + geom_path(aes(x=x, y=y),data=survey.area)
+print(p)
+```
+Predicted density surface for `mod5`. Quartiles for the predicted values were:
+``` {r}
+quantile(pp$mod5.pred)
+```
+
+
+
+## Conclusions
+
+This document has hopefully shown that the `dsm` package is a versatile and relatively easy-to-use package for the analysis of spatial distance sampling data.
+
+
+
+## References
+[^ref:maptools]: `maptools` relies on GDAL, instructions for how to get this to work on Mac OS can be found at [here](http://lostingeospace.blogspot.com/2011/08/rgeos-on-macos-x.html).
+[^ref:Distance]: Available at http://github.com/dill/Distance
+[^ref:dsm]: Available (along with some documentation and hints) at http://github.com/dill/dsm

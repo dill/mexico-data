@@ -20,7 +20,7 @@ mex.pred <- read.table("data/csv/mexico-pred.txt",skip=5)
 obs.tmp <- mex.obs[6:nrow(mex.obs),]
 # take only those rows with observations in them (this is checking
 # the "detected" column
-obs.tmp <- obs.tmp[obs.tmp[,24]!="",]
+#obs.tmp <- obs.tmp[obs.tmp[,24]!="",]
 obsdata <- data.frame(
                       object=1:nrow(obs.tmp),
                       Sample.Label=as.character(obs.tmp[,13]),
@@ -28,6 +28,8 @@ obsdata <- data.frame(
                       distance=as.numeric(as.character(obs.tmp[,19])),
                       Effort=as.numeric(as.character(obs.tmp[,14]))
                      )
+obsdata$size[is.na(obsdata$size)] <- 0
+obsdata$distance[is.na(obsdata$distance)] <- 0
 
 # create segdata
 # * ``x`` - centreline of the transect (i.e. "across the transect")
@@ -52,14 +54,14 @@ segdata <- data.frame(
 
 
 # create what we want for the mrds analysis
-distdata <- obsdata
+distdata <- obsdata[obsdata$size>0,]
 distdata$Sample.Label <- NULL
 distdata$detected <- rep(1,nrow(distdata))
-distdata$beaufort <- as.numeric(as.character(obs.tmp[,22]))
+distdata$beaufort <- as.numeric(as.character(obs.tmp[,22][obsdata$size>0]))
 
 # include the lat/long but just for plotting
-distdata$latitude <- as.numeric(as.character(obs.tmp[,15]))
-distdata$longitude <- as.numeric(as.character(obs.tmp[,16]))
+distdata$latitude <- as.numeric(as.character(obs.tmp[,15][obsdata$size>0]))
+distdata$longitude <- as.numeric(as.character(obs.tmp[,16][obsdata$size>0]))
 
 
 # prediction data

@@ -170,19 +170,19 @@ First, loading the library:
 suppressPackageStartupMessages(library(Distance))
 ```
 
-We can then fit a detection function with half-normal key and selecting cosine adjustments using AIC (the default behaviour), we also enforce a monotonically decreasing shape for the detection function:
+We can then fit a detection function with hazard-rate key with no adjustment terms: 
 ``` {r} 
-hn.model<-ds(distdata,max(distdata$distance),monotonicity="strict")
-summary(hn.model)
+hr.model<-ds(distdata,max(distdata$distance),key="hr",adjustment=NULL)
+summary(hr.model)
 ```
 Note that the line `N in covered region` refers to groups rather than individuals (and without accounting for any spatial effects).
 
-``` {r hn-detfct, fig.cap="Plot of the fitted detection function when a half-normal key function was used."}
-plot(hn.model)
+``` {r hr-detfct, fig.cap="Plot of the fitted detection function."}
+plot(hr.model)
 ```
 
 
-## Spatial analysis
+## Spatial modelling
 
 Before fitting a `dsm` model, the data must be segmented; this consists of chopping up the transects and attributing counts to each of the segments. Luckily these data have already been segmented, so we can use this data as-is. In general one can segment the transects using either GIS or `R`.
 
@@ -194,14 +194,15 @@ We begin with a very simple model. `dsm` allows for the response to be either ab
 
 Running the model:
 ``` {r}
-mod1<-dsm.fit(hn.model$ddf, response="indiv", formula=~s(x,y),
+mod1<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y),
 obsdata=obsdata,segdata=segdata)
 summary(mod1)
 ```
 
-Create the offset --  the logarithm of the area of each cell, multiplied by the probability of detection.
+Create the offset --  the area of each cell multiplied by the probability of detection (this is logged inside `dsm.predict`).
 ```{r}
-off.set <- fitted(hn.model$ddf)[1]*preddata$width*preddata$height
+# each prediction cell is 444km2
+off.set <- fitted(hr.model$ddf)[1]*444*1000*1000
 ```
 
 We can then make the predictions over the grid we imported above.
@@ -241,12 +242,11 @@ We can calculate uncertainty in our estimates of abundance using three different
 
 Using a regular moving block bootstrap takes a rather long time, but can be achieved with the following:
 ``` {r cache=TRUE, message=FALSE, warning=FALSE}
-offset <- fitted(hn.model$ddf)[1]*pp$width*pp$height
 block.size<-4
 n.boot<-1000
 mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot,
                               block.size=block.size,
-                              off.set=offset,bar=FALSE,
+                              off.set=off.set,bar=FALSE,
                               bs.file="mexico-bs.csv",
                               ds.uncertainty=TRUE)
 ```
@@ -273,7 +273,7 @@ preddata.varprop <- list()
 offset.varprop <- list()
 for(i in 1:nrow(preddata)){
   preddata.varprop[[i]] <- preddata[i,]
-  offset.varprop[[i]] <- offset[i]
+  offset.varprop[[i]] <- off.set
 }
 mod1.varprop<-dsm.var.prop(mod1,pred.data=preddata.varprop,off.set=offset.varprop)
 ```
@@ -296,7 +296,7 @@ Comparing the two methods, we can see that...
 
 The data set also contains a `depth` covariate (which we plotted above). We can include in the model very simply:
 ``` {r}
-mod2<-dsm.fit(hn.model$ddf, response="indiv", formula=~s(x,y)+s(depth), obsdata=obsdata,segdata=segdata)
+mod2<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y)+s(depth), obsdata=obsdata,segdata=segdata)
 summary(mod2)
 ```
 Again we can plot this:
@@ -324,7 +324,7 @@ Omitting the argument `select` gives plots of all the smooth terms, one at a tim
 
 Up until this point, the response has been assumed to be quasi-Poisson. Response distributions other than the Tweedie can be used, for example the Tweedie distribution. If the Tweedie is used, then the `p` parameter must be specified. Mark Bravington (via personal communication) suggests the use of `p=1.2` for marine mammal work. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the AIC of the resulting fits.
 ``` {r}
-mod3<-dsm.fit(hn.model$ddf, response="indiv", formula=~s(x,y), 
+mod3<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y), 
 		obsdata=obsdata,segdata=segdata,
 		model.defn=list(fn="gam",family="Tweedie",family.pars=list(p=1.2)))
 summary(mod3)
@@ -353,7 +353,7 @@ segdata <- segdata[onoff,]
 
 We can run a model with both the `depth` covariate along with a spatial smooth utilising the soap film smoother:
 ``` {r cache=TRUE}
-mod4<-dsm.fit(hn.model$ddf, response="indiv", 
+mod4<-dsm.fit(hr.model$ddf, response="indiv", 
 formula=~s(x,y, bs="so",k=10,xt=list(bnd=list(survey.area)))+s(depth), 
 obsdata=obsdata, segdata=segdata, 
 model.defn=list(fn="gam",family="quasipoisson",knots=soap.knots))

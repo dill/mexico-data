@@ -242,10 +242,8 @@ We can calculate uncertainty in our estimates of abundance using three different
 
 Using a regular moving block bootstrap takes a rather long time, but can be achieved with the following:
 ``` {r cache=TRUE, message=FALSE, warning=FALSE}
-block.size<-4
-n.boot<-1000
-mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot,
-                              block.size=block.size,
+mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot=1000,
+                              block.size=3,
                               off.set=off.set,bar=FALSE,
                               bs.file="mexico-bs.csv",
                               ds.uncertainty=TRUE)
@@ -261,13 +259,17 @@ summary(mod1.movblk)
 
 We can also plot a map of the coefficient of variation to help visualise the uncertainty as it varies around the area:
 ``` {r}
-plot(mod1.movblk)
+plot.limits <- c(0,1000)
+plot.breaks <- c(seq(0,1,len=100),seq(2,10,1),seq(11,100,len=10),seq(100,1000,100))
+legend.breaks <- c(seq(0,1,len=5),10,1000)
+
+plot(mod1.movblk,xlab="Easting",ylab="Northing",
+     limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
 ```
 One can also supply an additional `limits` argument that allows us to put both plots on the same scale.
 
 Alternatively, we can use the approach of Williams et al (2011), which accounts for uncertainty in the effective strip width by including its derivative in as a random effect in the model. This method is henceforth known as "variance propogation".
 
-In order to use the method we must first re-format the data so that each row in the prediction grid and offset is an element of a list.
 ``` {r}
 preddata.varprop <- list()
 offset.varprop <- list()
@@ -283,7 +285,8 @@ summary(mod1.varprop)
 ```
 We can also make a plot of the CVs, as above:
 ``` {r}
-plot(mod1.varprop)
+plot(mod1.varprop,xlab="Easting",ylab="Northing",
+     limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
 ```
 
 Comparing the two methods, we can see that...

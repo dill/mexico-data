@@ -4,7 +4,8 @@ library(ggplot2)
 library(vcd)
 gg.opts <- opts(panel.grid.major=theme_blank(), 
 panel.grid.minor=theme_blank(), 
-panel.background=theme_rect())
+panel.background=theme_rect(),
+legend.key=theme_blank())
 # maps
 library(maps)
 # make the results reproducable
@@ -31,10 +32,13 @@ rm(sa.tmp)
 p <- ggplot(preddata)
 p <- p + gg.opts
 p <- p + coord_equal()
-p <- p + labs(fill="Depth (m)",x="Metres from -88.31 longitude",y="Metres from 27.01 latitude",size="Group size")
+p <- p + labs(fill="Depth (m)",x="Metres from centre point",y="Metres from centre point",size="Group size")
 p <- p + geom_tile(aes(x=x,y=y,fill=depth, width = width, height = height))
 p <- p + geom_line(aes(x, y, group=Transect.Label),data=segdata)
-p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="red",alpha=I(0.7))
+p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="blue",alpha=I(0.7))
+p <- p + scale_fill_gradientn(colours = heat_hcl(10), 
+                              limits=c(min(preddata$depth),max(preddata$depth)),
+                              breaks=c(0,200,300,400,500,750,1000,2000,3000,3500))
 print(p)
 ggsave("depth-transects.pdf",width=9,height=5)
 
@@ -46,7 +50,12 @@ pdf("distances-groups.pdf",width=9,height=5)
 par(mfrow=c(1,2))
 
 # histograms
-hist(distdata$distance,main="",xlab="Distance (m)")
+#hist(distdata$distance,main="",xlab="Distance (m)")
+library(Distance)
+
+## @knitr unnamed-chunk-8
+hn.model<-ds(distdata,max(distdata$distance),monotonicity="strict")
+plot(hn.model,pl.den=0,showpoints=FALSE,main="")
 
 # plots of distance vs. size
 plot(distdata$distance,distdata$size, main="",xlab="Distance (m)",ylab="Group size",pch=19,cex=0.5,col=rgb(0.74,0.74,0.74,0.7))
@@ -56,29 +65,5 @@ l.dat<-data.frame(distance=seq(0,8000,len=1000))
 lo<-lm(size~distance, data=distdata)
 lines(l.dat$distance,as.vector(predict(lo,l.dat)))
 
-#par(o)
-
 dev.off()
-
-### @knitr count-spatplot
-#p<-qplot(data=survey.area,x=x,y=y,geom="polygon" , ylab="y", xlab="x", alpha=I(0.7),fill=I("lightblue"))
-#p<-p+gg.opts
-#p <- p + coord_equal()
-#p <- p + labs(size="Group size")
-#p <- p + geom_line(aes(x, y, group=Transect.Label),data=segdata)
-#p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="red",alpha=I(0.7))
-#print(p)
-#
-#
-### @knitr unnamed-chunk-5
-#p <- ggplot(preddata)
-#p <- p + gg.opts
-#p <- p + coord_equal()
-#p <- p + labs(fill="Depth",x="x",y="y")
-#p <- p + geom_tile(aes(x=x,y=y,fill=depth, width = width, height = height))
-#print(p)
-
-
-
-
 

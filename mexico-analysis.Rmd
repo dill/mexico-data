@@ -291,9 +291,7 @@ plot(mod1.varprop,xlab="Easting",ylab="Northing",
      limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
 ```
 
-Comparing the two methods, we can see that...
-
-
+It looks as though the moving block bootstrap gives much higher estimates of the coefficient of variation, this is an ongoing area of research and will be addressed in publications that are in preparation at the moment. For now it is advised that the moving block bootstraps will, at least, give (in some cases extremely) conservative estimates of the uncertainty in the model.
 
 
 

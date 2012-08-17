@@ -105,6 +105,7 @@ tb.tmp$km.n[1:length(preddata$latitude)])
 
 rm(lr, tb, lr.tmp, tb.tmp, pred.tmp)
 
+obsdata <- obsdata[obsdata$size>0,]
 
 # save everything to file
 save(segdata,obsdata,distdata,preddata,file="data/dolphins.RData")

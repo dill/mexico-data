@@ -10,6 +10,8 @@ The data set consists of observations of dolphins in the Gulf of Mexico. The ana
 
 The intention here is to highlight the features of the `dsm` package, rather than perform a full analysis of the data. For that reason, some important steps (such as model checking) are not fully explored.
 
+Familiarity with density surface modelling is assumed (see, e.g. Hedley and Buckland, 2004).
+
 Before we start, we load some `R` libraries and set some options: 
 ``` {r}
 library(ggplot2)
@@ -194,7 +196,7 @@ We begin with a very simple model. `dsm` allows for the response to be either ab
 
 Running the model:
 ``` {r}
-mod1<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y),
+mod1<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y,k=100),
 obsdata=obsdata,segdata=segdata)
 summary(mod1)
 ```
@@ -337,7 +339,7 @@ Note that we have to full specify the `model.defn` list here, since the default 
 
 ***Soap film smoothing***
 
-In order to account for a complex region (i.e. a region that includes peninsulae) we can use the soap film smoother. This is provided by the package `soap` (see references, below). First, loading the package:
+To account for a complex region (i.e. a region that includes peninsulae) we can use the soap film smoother. This is provided by the package `soap` (see references, below). First, loading the package:
 ``` {r}
 library(soap)
 ```
@@ -391,7 +393,7 @@ summary(hn.beau.model)
 ```
 Note that we opt to not use adjustments with the covariate model since we cannot ensure that the detection function will remain monotonic if both covariates and adjustment terms are used.
 
-The above output shows that there were some problems with fitting the half-normal (the Hessian was singular, possibly indicating that there were convergence issues). For that reason (and for variety) we use the hazard rate model.
+The above output shows that there were some problems with fitting the half-normal (the warning message indicates that there may have been convergence issues in the fitting procedure). For that reason (and for variety) we use the hazard rate model.
 
 We fit the model as above, simply replacing the `ddf` model object:
 ``` {r cache=TRUE}
@@ -399,7 +401,7 @@ mod5<-dsm.fit(hr.beau.model$ddf, response="indiv", formula=~s(x,y),
 obsdata=obsdata,segdata=segdata)
 summary(mod5)
 ```
-Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method of Williams et al (2010), but rather must resort to the moving block bootstrap. Other than this, all of the above models can be fitted.
+Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method of Williams et al (2011), but rather must resort to the moving block bootstrap. Other than this, all of the above models can be fitted.
 
 A plot of predicitons from the covariate model:
 ``` {r mod5-pred, fig.cap="Predicted density surface for `mod5`."}
@@ -417,11 +419,17 @@ print(p)
 
 ## Conclusions
 
-This document has hopefully shown that the `dsm` package is a versatile and relatively easy-to-use package for the analysis of spatial distance sampling data.
+This document has hopefully shown that the `dsm` package is a versatile and relatively easy-to-use package for the analysis of spatial distance sampling data. Note that there are many possible models that can be fitted using `dsm` and that the aim here was to show just a few of the options. Results from the models can be rather different, so care must be taken in performing model selection and discrimination. 
 
 
-## References and notes
+## Notes
  * `maptools` relies on GDAL, instructions for how to get this to work on Mac OS can be found at [here](http://lostingeospace.blogspot.com/2011/08/rgeos-on-macos-x.html).
  * `Distance` is available at [http://github.com/dill/Distance](http://github.com/dill/Distance) as well as on CRAN.
  * `dsm` is available (along with some documentation and hints) at [http://github.com/dill/dsm](http://github.com/dill/dsm).
  * `soap` is not available on CRAN, but can be downloaded from [Simon Wood's website](http://www.maths.bath.ac.uk/~sw283/simon/software.html).
+
+## References
+
+ * Williams, R., Hedley, S.L., Branch, T.A., Bravington, M.V., Zerbini, A.N. & Findlay, K.P. (2011) Chilean Blue Whales as a Case Study to Illustrate Methods to Estimate Abundance and Evaluate Conservation Status of Rare Species. Conservation Biology, 25, 526–535.
+ * Hedley, S.L. & Buckland, S.T. (2004) Spatial models for line transect sampling. Journal of Agricultural, Biological, and Environmental Statistics, 9, 181–199.
+

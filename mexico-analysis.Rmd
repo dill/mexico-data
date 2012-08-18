@@ -196,7 +196,7 @@ We begin with a very simple model. `dsm` allows for the response to be either ab
 
 Running the model:
 ``` {r}
-mod1<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y,k=100),
+mod1<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y),
 obsdata=obsdata,segdata=segdata)
 summary(mod1)
 ```
@@ -244,8 +244,8 @@ We can calculate uncertainty in our estimates of abundance using three different
 
 Using a regular moving block bootstrap takes a rather long time, but can be achieved with the following:
 ``` {r cache=TRUE, message=FALSE, warning=FALSE}
-mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot=1000,
-                              block.size=3,
+mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot=500,
+                              block.size=3,samp.unit.name="Transect.Label",
                               off.set=off.set,bar=FALSE,
                               bs.file="mexico-bs.csv",
                               ds.uncertainty=TRUE)

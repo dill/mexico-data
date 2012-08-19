@@ -387,10 +387,6 @@ mod1 <- dsm.fit(hr.model$ddf, response = "indiv", formula = ~s(x, y), obsdata = 
     segdata = segdata)
 ```
 
-```
-## Warning: matrix not positive definite
-```
-
 ```r
 summary(mod1)
 ```
@@ -487,19 +483,6 @@ We can also look at diagnostic plots for the model.
 dsm.check(mod1)
 ```
 
-```
-## Warning: matrix not positive definite
-```
-
-```
-## Warning: matrix not positive definite
-```
-
-```
-## Warning: data length [31] is not a sub-multiple or multiple of the number
-## of rows [30]
-```
-
 ![Diagnostic plots for `mod1`.](mexico-figs/mod1-check.png) 
 
 
@@ -511,118 +494,6 @@ Using a regular moving block bootstrap takes a rather long time, but can be achi
 mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot = 500, block.size = 3, 
     samp.unit.name = "Transect.Label", off.set = off.set, bar = FALSE, bs.file = "mexico-bs.csv", 
     ds.uncertainty = TRUE)
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## First partial hessian is singular; using second-partial hessian
-```
-
-```
-## 
-## ** Warning: Problems with fitting data. Did not converge**
 ```
 
 where the first argument is the model, the second is the data which we wish to predict over, and the third specifies the number of bootstrap resamples. The `block.size` argument gives the size of the moving blocks and `off.set` gives the effective area of the prediction cells. Setting `bar=TRUE` will print a progress bar to the screen (useful, but doesn't look nice in documents). The `bs.file` argument stores the per-resample results to be stored, then when the coefficient of variation is plotted (below) outliers can be removed (this is saved to file as often the full results are too big to store in memory while performing other computations). 
@@ -688,18 +559,10 @@ for (i in 1:nrow(preddata)) {
 mod1.varprop <- dsm.var.prop(mod1, pred.data = preddata.varprop, off.set = offset.varprop)
 ```
 
-```
-## Warning: matrix not positive definite
-```
-
 We can now inspect this object in the same way as with the boostrap estimates:
 
 ```r
 summary(mod1.varprop)
-```
-
-```
-## Warning: matrix not positive definite
 ```
 
 ```
@@ -743,14 +606,6 @@ The data set also contains a `depth` covariate (which we plotted above). We can 
 ```r
 mod2 <- dsm.fit(hr.model$ddf, response = "indiv", formula = ~s(x, y) + s(depth), 
     obsdata = obsdata, segdata = segdata)
-```
-
-```
-## Warning: matrix not positive definite
-```
-
-```
-## Warning: matrix not positive definite
 ```
 
 ```r
@@ -821,10 +676,6 @@ Up until this point, the response has been assumed to be quasi-Poisson. Response
 ```r
 mod3 <- dsm.fit(hr.model$ddf, response = "indiv", formula = ~s(x, y), obsdata = obsdata, 
     segdata = segdata, model.defn = list(fn = "gam", family = "Tweedie", family.pars = list(p = 1.2)))
-```
-
-```
-## Warning: matrix not positive definite
 ```
 
 ```r
@@ -898,14 +749,6 @@ mod4 <- dsm.fit(hr.model$ddf, response = "indiv", formula = ~s(x, y, bs = "so",
     k = 10, xt = list(bnd = list(survey.area))) + s(depth), obsdata = obsdata, 
     segdata = segdata, model.defn = list(fn = "gam", family = "quasipoisson", 
         knots = soap.knots))
-```
-
-```
-## Warning: matrix not positive definite
-```
-
-```
-## Warning: matrix not positive definite
 ```
 
 ```r
@@ -1042,10 +885,6 @@ We fit the model as above, simply replacing the `ddf` model object:
 ```r
 mod5 <- dsm.fit(hr.beau.model$ddf, response = "indiv", formula = ~s(x, y), obsdata = obsdata, 
     segdata = segdata)
-```
-
-```
-## Warning: matrix not positive definite
 ```
 
 ```r

@@ -201,15 +201,15 @@ obsdata=obsdata,segdata=segdata)
 summary(mod1)
 ```
 
-Create the offset --  the area of each cell multiplied by the probability of detection (this is logged inside `dsm.predict`).
+Create the offset -- the area of each cell (the link function (log) is applied inside `dsm.predict`).
 ```{r}
 # each prediction cell is 444km2
-off.set <- fitted(hr.model$ddf)[1]*444*1000*1000
+off.set <- 444*1000*1000
 ```
 
 We can then make the predictions over the grid we imported above.
 ``` {r}
-mod1.pred <- dsm.predict(mod1, preddata,off=off.set)
+mod1.pred <- dsm.predict(mod1, preddata, off.set)
 ```
 Below is a map of the predicted abundance. Before plotting, we bind on the predicitons to the data used to create them:
 ``` {r}
@@ -304,7 +304,7 @@ summary(mod2)
 ```
 Again we can plot this:
 ``` {r mod2-preds, fig.cap="Predicted density surface for `mod2`."}
-mod2.pred<-dsm.predict(mod2, preddata,off=off.set)
+mod2.pred<-dsm.predict(mod2, preddata, off.set)
 pp<-cbind(preddata,mod2.pred)
 p<-ggplot(pp)+gg.opts
 p <- p + labs(fill="Abundance")
@@ -366,7 +366,7 @@ summary(mod4)
 Comparing predictions from the model that included depth, we can see that the soap film has prevented some of the extreme values (especially in the lower right corner of the survey area).
 
 ``` {r mod4-pred, fig.cap="Predicted density surface for `mod4`.", cache=TRUE}
-mod4.pred<-dsm.predict(mod4,preddata, off=off.set)
+mod4.pred<-dsm.predict(mod4,preddata, off.set)
 pp<-cbind(preddata,mod4.pred)
 
 p<-ggplot(pp)+gg.opts
@@ -403,7 +403,7 @@ Note that for models where there are covariates at the individual level we canno
 
 A plot of predicitons from the covariate model:
 ``` {r mod5-pred, fig.cap="Predicted density surface for `mod5`."}
-mod5.pred<-dsm.predict(mod5,preddata, off=off.set)
+mod5.pred<-dsm.predict(mod5,preddata, off.set)
 pp<-cbind(preddata,mod5.pred)
 
 p <- ggplot(pp)+gg.opts

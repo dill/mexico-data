@@ -11,11 +11,11 @@ library(maps)
 set.seed(11123)
 
 library(maptools)
-survey.area<-readShapeSpatial("data/Study_ar")
+survey.area<-readShapeSpatial("../data/Study_ar")
 survey.area<-data.frame(survey.area@polygons[[1]]@Polygons[[1]]@coords)
 names(survey.area)<-c("longitude","latitude")
 
-load("data/dolphins.RData")
+load("../data/dolphins.RData")
 # centroid
 lon0 <- -88.31951
 lat0 <- 27.01594
@@ -43,15 +43,15 @@ pp <- cbind(preddata,mod1.pred)
 
 ## @knitr unnamed-chunk-15
 offset <- fitted(hn.model$ddf)[1]*pp$width*pp$height
-block.size<-4
-n.boot<-1000
-mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot,
-                              block.size=block.size,
-                              off.set=offset,bar=FALSE,
-                              bs.file="cvplot-mexico-bs.csv",
-                              ds.uncertainty=TRUE)
-
-summary(mod1.movblk)
+#block.size<-4
+#n.boot<-1000
+#mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot,
+#                              block.size=block.size,
+#                              off.set=offset,bar=FALSE,
+#                              bs.file="cvplot-mexico-bs.csv",
+#                              ds.uncertainty=TRUE)
+#
+#summary(mod1.movblk)
 
 
 
@@ -65,23 +65,26 @@ for(i in 1:nrow(preddata)){
 mod1.varprop<-dsm.var.prop(mod1,pred.data=preddata.varprop,
                            off.set=offset.varprop)
 
-save.image("cvplot.RData")
+#save.image("cvplot.RData")
 #load("cvplot.RData")
 
 summary(mod1.varprop)
 
 
 # @knitr unnamed-chunk-20
-plot.limits <- c(0,100)
-plot.breaks <- c(seq(0,1,len=100),seq(2,10,1),seq(11,100,len=10),seq(100,1000,100))
-legend.breaks <- c(seq(0,1,len=5),10,1000)
+#plot.limits <- c(0,100)
+#plot.breaks <- c(seq(0,1,len=100),seq(2,10,1),seq(11,100,len=10),seq(100,1000,100))
+#legend.breaks <- c(seq(0,1,len=5),10,1000)
+plot.limits <- c(0,5)
+plot.breaks <- seq(0,5,len=100)
+legend.breaks <- round(seq(0,5,len=8),2)
 
-plot(mod1.movblk,xlab="Easting",ylab="Northing",
-     limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
-#ggsave("cvplot-movblk.pdf",height=5,width=9)
-quartz()
+#plot(mod1.movblk,xlab="Easting",ylab="Northing",
+#     limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
+##ggsave("cvplot-movblk.pdf",height=5,width=9)
+#quartz()
 
 plot(mod1.varprop,xlab="Easting",ylab="Northing",
      limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
-#ggsave("cvplot-varprop.pdf",height=5,width=9)
+ggsave("cvplot-varprop.pdf",height=5,width=9)
 

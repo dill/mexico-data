@@ -67,13 +67,30 @@ library(Distance)
 hn.model<-ds(distdata,max(distdata$distance),monotonicity="strict")
 plot(hn.model,pl.den=0,showpoints=FALSE,main="")
 
-# plots of distance vs. size
-plot(distdata$distance,distdata$size, main="",xlab="Distance (m)",ylab="Group size",pch=19,cex=0.5,col=rgb(0.74,0.74,0.74,0.7))
+## plots of distance vs. size
+#plot(distdata$distance,distdata$size, main="",xlab="Distance (m)",ylab="Group size",pch=19,cex=0.5)
+#
+## lm fit
+#l.dat<-data.frame(distance=seq(0,8000,len=1000))
+#lo<-lm(size~distance, data=distdata)
+#lines(l.dat$distance,as.vector(predict(lo,l.dat)))
 
-# lm fit
-l.dat<-data.frame(distance=seq(0,8000,len=1000))
-lo<-lm(size~distance, data=distdata)
-lines(l.dat$distance,as.vector(predict(lo,l.dat)))
+# size bias
+hn.model <- ds(distdata, max(distdata$distance), adjustment=NULL)
+
+hn.df <- function(x,sigma){exp(-x^2/(2*sigma^2))}
+
+plot(hn.df(distdata$distance,exp(hn.model$ddf$par)), log(distdata$size), main="", xlab="Probability of detection given distance",ylab="log(group size)",pch=19,cex=0.5)
+#
+## lm fit
+lm.dat <- data.frame(lsize=log(distdata$size),
+                     p=hn.df(distdata$distance,exp(hn.model$ddf$par)))
+lo <- lm(lsize~p, data=lm.dat)
+pred.dat <- data.frame(p=seq(0.3,1,len=1000))
+lines(pred.dat$p,as.vector(predict(lo,pred.dat)))
+
+cat("groups size at g(0)=1:", exp(predict(lo,data.frame(p=1))),"\n")
+cat("mean cluster size    :",mean(distdata$size),"\n")
 
 dev.off()
 

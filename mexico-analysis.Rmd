@@ -184,7 +184,7 @@ plot(hr.model)
 ```
 
 
-## Spatial modelling
+## Fitting a DSM 
 
 Before fitting a `dsm` model, the data must be segmented; this consists of chopping up the transects and attributing counts to each of the segments. Luckily these data have already been segmented, so we can use this data as-is. In general one can segment the transects using either GIS or `R`.
 

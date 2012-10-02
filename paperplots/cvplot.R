@@ -84,6 +84,18 @@ legend.breaks <- round(seq(0,5,len=8),2)
 ##ggsave("cvplot-movblk.pdf",height=5,width=9)
 #quartz()
 
+# annoying switch to km
+mod1.varprop$pred.data <- lapply(mod1.varprop$pred.data,
+                                 function(x){x$x<-x$x/1000
+                                             x$y<-x$y/1000
+                                             x$width <- x$width/1000
+                                             x$height <- x$height/1000
+                                             return(x)})
+mod1.varprop$dsm.object$data$x <- mod1.varprop$dsm.object$data$x/1000
+mod1.varprop$dsm.object$data$y <- mod1.varprop$dsm.object$data$y/1000
+mod1.varprop$dsm.object$ddf$data$x <- mod1.varprop$dsm.object$ddf$data$x/1000
+mod1.varprop$dsm.object$ddf$data$y <- mod1.varprop$dsm.object$ddf$data$y/1000
+
 plot(mod1.varprop,xlab="Easting",ylab="Northing",
      limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
 ggsave("cvplot-varprop.pdf",height=5,width=9)

@@ -33,7 +33,7 @@ rm(sa.tmp)
 suppressPackageStartupMessages(library(Distance))
 hn.model<-ds(distdata,max(distdata$distance),monotonicity="strict")
 
-mod1<-dsm.fit(hn.model$ddf, response="indiv", formula=~s(x,y),
+mod1<-dsm.fit(hn.model$ddf, response="indiv", formula=~s(x,y)+s(depth),
 obsdata=obsdata,segdata=segdata)
 
 off.set <- fitted(hn.model$ddf)[1]*preddata$width*preddata$height
@@ -75,9 +75,10 @@ summary(mod1.varprop)
 #plot.limits <- c(0,100)
 #plot.breaks <- c(seq(0,1,len=100),seq(2,10,1),seq(11,100,len=10),seq(100,1000,100))
 #legend.breaks <- c(seq(0,1,len=5),10,1000)
-plot.limits <- c(0,5)
-plot.breaks <- seq(0,5,len=100)
-legend.breaks <- round(seq(0,5,len=8),2)
+upper <- 18
+plot.limits <- c(0,upper)
+plot.breaks <- seq(0,upper,len=100)
+legend.breaks <- round(seq(0,upper,len=8),2)
 
 #plot(mod1.movblk,xlab="Easting",ylab="Northing",
 #     limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)

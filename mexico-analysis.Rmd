@@ -16,9 +16,9 @@ Before we start, we load some `R` libraries and set some options:
 ``` {r}
 library(ggplot2)
 library(vcd)
-gg.opts <- opts(panel.grid.major=theme_blank(), 
-panel.grid.minor=theme_blank(), 
-panel.background=theme_rect())
+gg.opts <- theme(panel.grid.major=element_blank(),
+                panel.grid.minor=element_blank(),
+                panel.background=element_blank())
 # maps
 library(maps)
 # make the results reproducable
@@ -172,12 +172,11 @@ First, loading the library:
 suppressPackageStartupMessages(library(Distance))
 ```
 
-We can then fit a detection function with hazard-rate key with no adjustment terms: 
-``` {r} 
+We can then fit a detection function with hazard-rate key with no adjustment terms:
+``` {r}
 hr.model<-ds(distdata,max(distdata$distance),key="hr",adjustment=NULL)
 summary(hr.model)
 ```
-Note that the line `N in covered region` refers to groups rather than individuals (and without accounting for any spatial effects).
 
 ``` {r hr-detfct, fig.cap="Plot of the fitted detection function."}
 plot(hr.model)
@@ -192,16 +191,15 @@ The functions used to fit a spatial model can all be found in the `R` package `d
 
 ### A simple model
 
-We begin with a very simple model. `dsm` allows for the response to be either abdunace of groups (`response="group"`) or individual abundance (`response="indiv"`), here we opt for individual abundance since this is more useful. We assume that the number of individuals in each segment are quasi-Poisson distributed and that they are a smooth function of their spatial coordinates (note that the formula is exactly as one would specify to `gam` in `mgcv`). 
+We begin with a very simple model. We assume that the number of individuals in each segment are quasi-Poisson distributed and that they are a smooth function of their spatial coordinates (note that the formula is exactly as one would specify to `gam` in `mgcv`). The abundance of groups rather than individuals can be estimated by setting `group=TRUE` (though we ignore this here).
 
 Running the model:
 ``` {r}
-mod1<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y),
-obsdata=obsdata,segdata=segdata)
+mod1<-dsm(N~s(x,y), hr.model$ddf, segdata, obsdata)
 summary(mod1)
 ```
 
-Create the offset -- the area of each cell (the link function (log) is applied inside `dsm.predict`).
+Create the offset -- the area of each cell.
 ```{r}
 # each prediction cell is 444km2
 off.set <- 444*1000*1000
@@ -209,13 +207,13 @@ off.set <- 444*1000*1000
 
 We can then make the predictions over the grid we imported above.
 ``` {r}
-mod1.pred <- dsm.predict(mod1, preddata, off.set)
+mod1.pred <- predict(mod1, preddata, off.set)
 ```
 Below is a map of the predicted abundance. Before plotting, we bind on the predicitons to the data used to create them:
 ``` {r}
 pp <- cbind(preddata,mod1.pred)
 ```
-We can calculate abundance (of groups) over the survey area by simply summing these predictions:
+We can calculate abundance over the survey area by simply summing these predictions:
 ``` {r}
 sum(mod1.pred)
 ```
@@ -237,10 +235,10 @@ quantile(pp$mod1.pred)
 
 We can also look at diagnostic plots for the model.
 ``` {r mod1-check, fig.cap="Diagnostic plots for `mod1`."}
-dsm.check(mod1)
+gam.check(mod1)
 ```
 
-We can calculate uncertainty in our estimates of abundance using three different methods in `dsm`, the first two use a moving block bootstrap and the third using the method proposed in Williams et al (2011). 
+We can calculate uncertainty in our estimates of abundance using three different methods in `dsm`, the first two use a moving block bootstrap and the third using the method proposed in Williams et al (2011).
 
 Using a regular moving block bootstrap takes a rather long time, but can be achieved with the following:
 ``` {r cache=TRUE, message=FALSE, warning=FALSE}
@@ -261,25 +259,16 @@ summary(mod1.movblk)
 
 We can also plot a map of the coefficient of variation to help visualise the uncertainty as it varies around the area:
 ``` {r}
-plot.limits <- c(0,1000)
-plot.breaks <- c(seq(0,1,len=100),seq(2,10,1),seq(11,100,len=10),seq(100,1000,100))
-legend.breaks <- c(seq(0,1,len=5),10,1000)
-
-plot(mod1.movblk,xlab="Easting",ylab="Northing",
-     limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
+plot(mod1.movblk,xlab="Easting",ylab="Northing")
 ```
 One can also supply an additional `limits` argument that allows us to put both plots on the same scale.
 
 Alternatively, we can use the approach of Williams et al (2011), which accounts for uncertainty in the effective strip width by including its derivative in as a random effect in the model. This method is henceforth known as "variance propogation".
 
 ``` {r}
-preddata.varprop <- list()
-offset.varprop <- list()
-for(i in 1:nrow(preddata)){
-  preddata.varprop[[i]] <- preddata[i,]
-  offset.varprop[[i]] <- off.set
-}
-mod1.varprop<-dsm.var.prop(mod1,pred.data=preddata.varprop,off.set=offset.varprop)
+preddata.varprop <- split(preddata,1:nrow(preddata))
+offset.varprop <- as.list(rep(off.set,nrow(preddata)))
+mod1.varprop <- dsm.var.prop(mod1,pred.data=preddata.varprop,off.set=offset.varprop)
 ```
 We can now inspect this object in the same way as with the boostrap estimates:
 ``` {r}
@@ -287,8 +276,7 @@ summary(mod1.varprop)
 ```
 We can also make a plot of the CVs, as above:
 ``` {r}
-plot(mod1.varprop,xlab="Easting",ylab="Northing",
-     limits=plot.limits,breaks=plot.breaks,legend.breaks=legend.breaks)
+plot(mod1.varprop,xlab="Easting",ylab="Northing")
 ```
 
 It looks as though the moving block bootstrap gives much higher estimates of the coefficient of variation, this is an ongoing area of research and will be addressed in publications that are in preparation at the moment. For now it is advised that the moving block bootstraps will, at least, give (in some cases extremely) conservative estimates of the uncertainty in the model.
@@ -299,25 +287,25 @@ It looks as though the moving block bootstrap gives much higher estimates of the
 
 The data set also contains a `depth` covariate (which we plotted above). We can include in the model very simply:
 ``` {r}
-mod2<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y)+s(depth), obsdata=obsdata,segdata=segdata)
+mod2 <- dsm(N~s(x,y)+s(depth), hr.model, segdata, obsdata)
 summary(mod2)
 ```
 Again we can plot this:
 ``` {r mod2-preds, fig.cap="Predicted density surface for `mod2`."}
-mod2.pred<-dsm.predict(mod2, preddata, off.set)
-pp<-cbind(preddata,mod2.pred)
-p<-ggplot(pp)+gg.opts
+mod2.pred <- predict(mod2, preddata, off.set)
+pp <- cbind(preddata,mod2.pred)
+p <- ggplot(pp) + gg.opts
 p <- p + labs(fill="Abundance")
-p<-p+geom_tile(aes(x=x,y=y,fill=mod2.pred,width=width,height=height))
+p <- p + geom_tile(aes(x=x,y=y,fill=mod2.pred,width=width,height=height))
 p <- p + coord_equal()
 p <- p + scale_fill_gradientn(colours=heat_hcl(20))
-p<-p+geom_path(aes(x=x, y=y),data=survey.area)
+p <- p + geom_path(aes(x=x, y=y),data=survey.area)
 print(p)
 ```
 
 We can also look at the relationship between depth and abundance:
 ``` {r mod2-depth}
-plot(mod2$result,select=2)
+plot(mod2, select=2, residuals=TRUE)
 ```
 Omitting the argument `select` gives plots of all the smooth terms, one at a time.
 
@@ -327,53 +315,51 @@ Omitting the argument `select` gives plots of all the smooth terms, one at a tim
 
 Up until this point, the response has been assumed to be quasi-Poisson. Response distributions other than the Tweedie can be used, for example the Tweedie distribution. If the Tweedie is used, then the `p` parameter must be specified. Mark Bravington (via personal communication) suggests the use of `p=1.2` for marine mammal work. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the AIC of the resulting fits.
 ``` {r}
-mod3<-dsm.fit(hr.model$ddf, response="indiv", formula=~s(x,y), 
-		obsdata=obsdata,segdata=segdata,
-		model.defn=list(fn="gam",family="Tweedie",family.pars=list(p=1.2)))
+mod3 <- dsm(N~s(x,y), hr.model, segdata, obsdata,
+            family=Tweedie(p=1.2))
 summary(mod3)
 ```
-Note that we have to full specify the `model.defn` list here, since the default values won't be passed through otherwise.
+Note that we have to full specify the `family` just as in `mgcv`.
 
 
 ***Soap film smoothing***
 
-To account for a complex region (i.e. a region that includes peninsulae) we can use the soap film smoother. This is provided by the package `soap` (see references, below). First, loading the package:
-``` {r}
-library(soap)
-```
+To account for a complex region (i.e. a region that includes peninsulae) we can use the soap film smoother. This is provided by the soap film smoother (see references, below). First, loading the package:
 
 In order to use a soap film smoother for the spatial part of the model we must create a set of knots for the smoother to use. This is easily done using the `make_soap_grid()` function in `dsm`:
 ``` {r}
-soap.knots <- make_soap_grid(survey.area,c(11,6))
+soap.knots <- make.soapgrid(survey.area,c(11,6))
+# knot 11 is not outside but is too close according to soap...
+soap.knots <- soap.knots[-11,]
 ```
 where the second argument specifies the size of the grid that will be used to create the knots (knots in the grid outside of `survey.area` are removed).
 
 As we saw in the exploratory analysis, some of the transect lines are outside of the survey area. These will cause the soap film smoother to fail, so we remove them:
 ``` {r}
-onoff <- inSide(x=segdata$x, y=segdata$y, bnd=survey.area)
+x <- segdata$x; y<-segdata$y
+onoff <- inSide(x=x,y=y, bnd=survey.area)
+rm(x,y)
 segdata <- segdata[onoff,]
 ```
 
 We can run a model with both the `depth` covariate along with a spatial smooth utilising the soap film smoother:
 ``` {r cache=TRUE}
-mod4<-dsm.fit(hr.model$ddf, response="indiv", 
-formula=~s(x,y, bs="so",k=10,xt=list(bnd=list(survey.area)))+s(depth), 
-obsdata=obsdata, segdata=segdata, 
-model.defn=list(fn="gam",family="quasipoisson",knots=soap.knots))
+mod4<-dsm(N~s(x,y, bs="so",k=10,xt=list(bnd=list(survey.area)))+s(depth),
+hr.model, segdata, obsdata, knots=soap.knots)
 summary(mod4)
 ```
 
 Comparing predictions from the model that included depth, we can see that the soap film has prevented some of the extreme values (especially in the lower right corner of the survey area).
 
 ``` {r mod4-pred, fig.cap="Predicted density surface for `mod4`.", cache=TRUE}
-mod4.pred<-dsm.predict(mod4,preddata, off.set)
-pp<-cbind(preddata,mod4.pred)
+mod4.pred <- predict(mod4,preddata, off.set)
+pp <- cbind(preddata,mod4.pred)
 
-p<-ggplot(pp)+gg.opts
-p<-p+geom_tile(aes(x=x,y=y,fill=mod4.pred,width=width,height=height))
+p <- ggplot(pp) + gg.opts
+p <- p + geom_tile(aes(x=x,y=y,fill=mod4.pred,width=width,height=height))
 p <- p + coord_equal()
 p <- p + scale_fill_gradientn(colours=heat_hcl(20))
-p<-p+geom_path(aes(x=x, y=y),data=survey.area)
+p <- p + geom_path(aes(x=x, y=y),data=survey.area)
 p <- p + labs(fill="Abundance")
 print(p)
 ```
@@ -393,20 +379,19 @@ Note that we opt to not use adjustments with the covariate model since we cannot
 
 The above output shows that there were some problems with fitting the half-normal (the warning message indicates that there may have been convergence issues in the fitting procedure). For that reason (and for variety) we use the hazard rate model.
 
-We fit the model as above, simply replacing the `ddf` model object:
+We fit the model as above, simply replacing the `ddf` model object and changing the response to be `Nhat` so the abundances are estimated per segment:
 ``` {r cache=TRUE}
-mod5<-dsm.fit(hr.beau.model$ddf, response="indiv", formula=~s(x,y),
-obsdata=obsdata,segdata=segdata)
+mod5 <- dsm(Nhat~s(x,y), hr.beau.model, segdata, obsdata)
 summary(mod5)
 ```
 Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method of Williams et al (2011), but rather must resort to the moving block bootstrap. Other than this, all of the above models can be fitted.
 
 A plot of predicitons from the covariate model:
 ``` {r mod5-pred, fig.cap="Predicted density surface for `mod5`."}
-mod5.pred<-dsm.predict(mod5,preddata, off.set)
-pp<-cbind(preddata,mod5.pred)
+mod5.pred <- predict(mod5,preddata, off.set)
+pp <- cbind(preddata,mod5.pred)
 
-p <- ggplot(pp)+gg.opts
+p <- ggplot(pp) + gg.opts
 p <- p + geom_tile(aes(x=x,y=y,fill=mod5.pred,width=width,height=height))
 p <- p + coord_equal()
 p <- p + scale_fill_gradientn(colours=heat_hcl(20))
@@ -424,7 +409,6 @@ This document has hopefully shown that the `dsm` package is a versatile and rela
  * `maptools` relies on GDAL, instructions for how to get this to work on Mac OS can be found at [here](http://lostingeospace.blogspot.com/2011/08/rgeos-on-macos-x.html).
  * `Distance` is available at [http://github.com/dill/Distance](http://github.com/dill/Distance) as well as on CRAN.
  * `dsm` is available (along with some documentation and hints) at [http://github.com/dill/dsm](http://github.com/dill/dsm).
- * `soap` is not available on CRAN, but can be downloaded from [Simon Wood's website](http://www.maths.bath.ac.uk/~sw283/simon/software.html).
 
 ## References
 

@@ -1,4 +1,11 @@
-soap
+Matrix
+minqa
+Rcpp
+Rvmmin
+Rcgmin
+ucminf
+BB
+quadprog
 Distance
 dsm
 mrds
@@ -17,13 +24,11 @@ colorspace
 grid
 MASS
 ggplot2
-markdown
 knitr
 stats
 graphics
 grDevices
 utils
 datasets
-BiocInstaller
 methods
 base

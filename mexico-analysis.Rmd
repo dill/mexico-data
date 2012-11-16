@@ -287,9 +287,12 @@ It looks as though the moving block bootstrap gives much higher estimates of the
 
 The data set also contains a `depth` covariate (which we plotted above). We can include in the model very simply:
 ``` {r}
-mod2 <- dsm(N~s(x,y)+s(depth), hr.model, segdata, obsdata)
+mod2 <- dsm(N~s(x,y)+s(depth), hr.model, segdata, obsdata, select=TRUE)
 summary(mod2)
 ```
+Setting `select=TRUE` here imposes extra shrinkage terms on each smooth in the model (allowing smooth terms to be removed from the model during fitting, see `?gam` for more information). Although this is not particularly useful here, this can be a good way to cut down on covariates when many are present.
+
+
 Again we can plot this:
 ``` {r mod2-preds, fig.cap="Predicted density surface for `mod2`."}
 mod2.pred <- predict(mod2, preddata, off.set)
@@ -321,6 +324,20 @@ summary(mod3)
 ```
 Note that we have to full specify the `family` just as in `mgcv`.
 
+However looking at a plot of the square root of the absolute value of the residuals versus the fitted values gives the following plot:
+```{r tweedie-12-residplot}
+plot(sqrt(abs(residuals(mod3))),predict(mod3))
+```
+where as looking at if we get `p=1.7` we obtain:
+``` {r tweedie-17}
+mod3 <- dsm(N~s(x,y), hr.model, segdata, obsdata,
+            family=Tweedie(p=1.7))
+summary(mod3)
+plot(sqrt(abs(residuals(mod3))),predict(mod3))
+```
+Note also the improvement in GCV score.
+
+(A good value can be found by simply plotting the above along with the GCV score for the model for values of `p` between 1.1 and 1.9 and looking for the best GCV and "flattest" plot.)
 
 ***Soap film smoothing***
 

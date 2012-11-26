@@ -36,13 +36,13 @@ hn.model<-ds(distdata,max(distdata$distance),monotonicity="strict")
 mod1<-dsm.fit(hn.model$ddf, response="indiv", formula=~s(x,y)+s(depth),
 obsdata=obsdata,segdata=segdata)
 
-off.set <- fitted(hn.model$ddf)[1]*preddata$width*preddata$height
+off.set <- preddata$width*preddata$height
 
 mod1.pred <- dsm.predict(mod1, preddata,off=off.set)
 pp <- cbind(preddata,mod1.pred)
 
 ## @knitr unnamed-chunk-15
-offset <- fitted(hn.model$ddf)[1]*pp$width*pp$height
+offset <- pp$width*pp$height
 #block.size<-4
 #n.boot<-1000
 #mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot,

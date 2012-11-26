@@ -3,8 +3,8 @@
 library(ggplot2)
 library(vcd)
 gg.opts <- opts(panel.grid.major=theme_blank(), 
-panel.grid.minor=theme_blank(), 
-panel.background=theme_rect(),
+panel.grid.minor=theme_blank(),
+panel.background=theme_blank(),
 legend.key=theme_blank())
 # maps
 library(maps)
@@ -19,7 +19,7 @@ load("../data/dolphins.RData")
 lon0 <- -88.31951
 lat0 <- 27.01594
 library(dsm)
-sa.tmp <- latlong2km(survey.area$longitude, survey.area$latitude, 
+sa.tmp <- latlong2km(survey.area$longitude, survey.area$latitude,
 lon0=lon0, lat0=lat0)
 #survey.area <- data.frame(x=1000*sa.tmp$km.e, y=1000*sa.tmp$km.n)
 survey.area <- data.frame(x=sa.tmp$km.e, y=sa.tmp$km.n)
@@ -45,10 +45,12 @@ p <- p + coord_equal()
 p <- p + labs(fill="Depth (m)",x="Easting",y="Northing",size="Group size")
 p <- p + geom_tile(aes(x=x,y=y,fill=depth, width = width, height = height))
 p <- p + geom_line(aes(x, y, group=Transect.Label),data=segdata)
-p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="blue",alpha=I(0.7))
-p <- p + scale_fill_gradientn(colours = heat_hcl(10), 
+p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="black",alpha=I(0.7))
+p <- p + scale_fill_gradient(high="darkgrey",low="white",
                               limits=c(min(preddata$depth),max(preddata$depth)),
-                              breaks=c(0,200,300,400,500,750,1000,2000,3000,3500))
+#                              breaks=c(0,200,300,400,500,750,1000,2000,3000,3500))
+                              breaks=c(0,200,1000,2000,3000))
+p<-p+geom_path(aes(x=x, y=y),data=survey.area)
 print(p)
 ggsave("depth-transects.pdf",width=9,height=5)
 

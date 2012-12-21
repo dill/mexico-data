@@ -16,6 +16,7 @@ Before we start, we load some `R` libraries and set some options:
 ``` {r}
 library(ggplot2)
 library(vcd)
+library(dsm)
 gg.opts <- theme(panel.grid.major=element_blank(),
                 panel.grid.minor=element_blank(),
                 panel.background=element_blank())
@@ -41,9 +42,10 @@ Note that we ignore the file type extension in the call to `readShapeSpatial` an
 
 ### Observation and segment data
 
-All of the data for this analysis has been nicely pre-formatted and can be found in `data/dolphins.RData`. Loading up that data, we can see that it contains four data frames, the first few lines of each are shown:
+All of the data for this analysis has been nicely pre-formatted and is shipped with `dsm`. Loading up that data, we can see that we have four data frames, the first few lines of each are shown:
 ``` {r}
-load("data/dolphins.RData")
+data(mexdolphins)
+attach(mexdolphins)
 head(segdata)
 head(distdata)
 head(obsdata)
@@ -76,9 +78,6 @@ We give an example of converting the survey area here to show that this is a sim
 # centroid
 lon0 <- -88.31951
 lat0 <- 27.01594
-
-# the dsm package has the function that we need
-library(dsm)
 
 sa.tmp <- latlong2km(survey.area$longitude, survey.area$latitude, 
 lon0=lon0, lat0=lat0)
@@ -238,49 +237,21 @@ We can also look at diagnostic plots for the model.
 gam.check(mod1)
 ```
 
-We can calculate uncertainty in our estimates of abundance using three different methods in `dsm`, the first two use a moving block bootstrap and the third using the method proposed in Williams et al (2011).
-
-Using a regular moving block bootstrap takes a rather long time, but can be achieved with the following:
-``` {r cache=TRUE, message=FALSE, warning=FALSE}
-mod1.movblk <- dsm.var.movblk(mod1, preddata, n.boot=500,
-                              block.size=3,samp.unit.name="Transect.Label",
-                              off.set=off.set,bar=FALSE,
-                              bs.file="mexico-bs.csv",
-                              ds.uncertainty=TRUE)
-```
-where the first argument is the model, the second is the data which we wish to predict over, and the third specifies the number of bootstrap resamples. The `block.size` argument gives the size of the moving blocks and `off.set` gives the effective area of the prediction cells. Setting `bar=TRUE` will print a progress bar to the screen (useful, but doesn't look nice in documents). The `bs.file` argument stores the per-resample results to be stored, then when the coefficient of variation is plotted (below) outliers can be removed (this is saved to file as often the full results are too big to store in memory while performing other computations). 
-
-Here we set `ds.uncertainty=TRUE` this generates new distance data (using the fitted detection function) in each bootstrap re-sample and then re-fits the detection function (accounting for uncertainty in estimating the effective strip widths and hence the prediction grid areas). When `ds.uncertainty=FALSE`, uncertainty in the detection function is included via the delta method. Note that the delta method assumes that the two variances that it combines are independent, this assumption is clearly violated. 
-
-It is possible that there may be large outliers in the bootstrap results (as well as results which are infinite or `NA`), these are removed before calculating the variance. Any removed resamples are reported in the `summary`, along with the estimated variance:
-``` {r}
-summary(mod1.movblk)
-```
-
-We can also plot a map of the coefficient of variation to help visualise the uncertainty as it varies around the area:
-``` {r}
-plot(mod1.movblk,xlab="Easting",ylab="Northing")
-```
-One can also supply an additional `limits` argument that allows us to put both plots on the same scale.
-
-Alternatively, we can use the approach of Williams et al (2011), which accounts for uncertainty in the effective strip width by including its derivative in as a random effect in the model. This method is henceforth known as "variance propogation".
+We can use the approach of Williams et al (2011), which accounts for uncertainty in the effective strip width by including its derivative in as a random effect in the model. This method is known as "variance propogation".
 
 ``` {r}
 preddata.varprop <- split(preddata,1:nrow(preddata))
 offset.varprop <- as.list(rep(off.set,nrow(preddata)))
 mod1.varprop <- dsm.var.prop(mod1,pred.data=preddata.varprop,off.set=offset.varprop)
 ```
-We can now inspect this object in the same way as with the boostrap estimates:
+Calling `summary` will give some information about uncertainty estimation:
 ``` {r}
 summary(mod1.varprop)
 ```
-We can also make a plot of the CVs, as above:
-``` {r}
+We can also make a plot of the CVs:
+``` {r, fig.cap="Plot of the coefficient of variation for the study area."}
 plot(mod1.varprop,xlab="Easting",ylab="Northing")
 ```
-
-It looks as though the moving block bootstrap gives much higher estimates of the coefficient of variation, this is an ongoing area of research and will be addressed in publications that are in preparation at the moment. For now it is advised that the moving block bootstraps will, at least, give (in some cases extremely) conservative estimates of the uncertainty in the model.
-
 
 
 ### Adding another covariate to the spatial model
@@ -307,8 +278,8 @@ print(p)
 ```
 
 We can also look at the relationship between depth and abundance:
-``` {r mod2-depth}
-plot(mod2, select=2, residuals=TRUE)
+``` {r mod2-depth, fig.cap="Plot of the smooth of depth in `mod2`."}
+plot(mod2, select=2)
 ```
 Omitting the argument `select` gives plots of all the smooth terms, one at a time.
 
@@ -325,15 +296,18 @@ summary(mod3)
 Note that we have to full specify the `family` just as in `mgcv`.
 
 However looking at a plot of the square root of the absolute value of the residuals versus the fitted values gives the following plot:
-```{r tweedie-12-residplot}
-plot(sqrt(abs(residuals(mod3))),predict(mod3))
+```{r tweedie-12-residplot, fig.cap="Plot of absolute value of the residuals versus the fitted values for the Tweedie model when `p=1.2`"}
+plot(sqrt(abs(residuals(mod3))),predict(mod3),xlab="Square root of the absolute value of the residuals", ylab="Fitted values")
 ```
 where as looking at if we get `p=1.7` we obtain:
 ``` {r tweedie-17}
 mod3 <- dsm(N~s(x,y), hr.model, segdata, obsdata,
             family=Tweedie(p=1.7))
 summary(mod3)
-plot(sqrt(abs(residuals(mod3))),predict(mod3))
+```
+
+```{r tweedie-17-residplot, fig.cap="Plot of absolute value of the residuals versus the fitted values for the Tweedie model when `p=1.7`, note is is much flatter than the previous plot."}
+plot(sqrt(abs(residuals(mod3))),predict(mod3),xlab="Square root of the absolute value of the residuals", ylab="Fitted values")
 ```
 Note also the improvement in GCV score.
 

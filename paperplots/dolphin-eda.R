@@ -58,8 +58,10 @@ ggsave("depth-transects.pdf",width=9,height=5)
 # save graphics options
 #o<-par("mfrow")
 
-pdf("distances-groups.pdf",width=9,height=5)
-par(mfrow=c(1,2))
+#pdf("distances-groups.pdf",width=9,height=5)
+#par(mfrow=c(1,2))
+
+pdf("distances.pdf",width=5,height=5)
 
 # histograms
 #hist(distdata$distance,main="",xlab="Distance (m)")
@@ -77,22 +79,22 @@ plot(hn.model,pl.den=0,showpoints=FALSE,main="")
 #lo<-lm(size~distance, data=distdata)
 #lines(l.dat$distance,as.vector(predict(lo,l.dat)))
 
-# size bias
-hn.model <- ds(distdata, max(distdata$distance), adjustment=NULL)
-
-hn.df <- function(x,sigma){exp(-x^2/(2*sigma^2))}
-
-plot(hn.df(distdata$distance,exp(hn.model$ddf$par)), log(distdata$size), main="", xlab="Probability of detection given distance",ylab="log(group size)",pch=19,cex=0.5)
+## size bias
+#hn.model <- ds(distdata, max(distdata$distance), adjustment=NULL)
 #
-## lm fit
-lm.dat <- data.frame(lsize=log(distdata$size),
-                     p=hn.df(distdata$distance,exp(hn.model$ddf$par)))
-lo <- lm(lsize~p, data=lm.dat)
-pred.dat <- data.frame(p=seq(0.3,1,len=1000))
-lines(pred.dat$p,as.vector(predict(lo,pred.dat)))
-
-cat("groups size at g(0)=1:", exp(predict(lo,data.frame(p=1))),"\n")
-cat("mean cluster size    :",mean(distdata$size),"\n")
+#hn.df <- function(x,sigma){exp(-x^2/(2*sigma^2))}
+#
+#plot(hn.df(distdata$distance,exp(hn.model$ddf$par)), log(distdata$size), main="", xlab="Probability of detection given distance",ylab="log(group size)",pch=19,cex=0.5)
+##
+### lm fit
+#lm.dat <- data.frame(lsize=log(distdata$size),
+#                     p=hn.df(distdata$distance,exp(hn.model$ddf$par)))
+#lo <- lm(lsize~p, data=lm.dat)
+#pred.dat <- data.frame(p=seq(0.3,1,len=1000))
+#lines(pred.dat$p,as.vector(predict(lo,pred.dat)))
+#
+#cat("groups size at g(0)=1:", exp(predict(lo,data.frame(p=1))),"\n")
+#cat("mean cluster size    :",mean(distdata$size),"\n")
 
 dev.off()
 

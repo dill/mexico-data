@@ -347,7 +347,7 @@ We fit the model as above, simply replacing the detection function model object 
 mod5 <- dsm(Nhat~s(x,y), hr.beau.model, segdata, obsdata)
 summary(mod5)
 ```
-Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams et al (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`), or use the moving block bootstrap. Other than this, all of the above models can be fitted.
+Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams et al (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`), or use the moving block bootstrap. Other than this, all of the above functions can be used.
 
 A plot of predicitons from the covariate model:
 ``` {r mod5-pred, fig.cap="Predicted density surface for `mod5`."}

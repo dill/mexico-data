@@ -7,4 +7,4 @@
 
 R -e 'library(knitr);knit("mexico-analysis.Rmd")'
 
-pandoc -s -i mexico-analysis.md -o mexico-analysis.tex -t latex -S
+pandoc -s -i mexico-analysis.md -o mexico-analysis.tex -t latex -S -N

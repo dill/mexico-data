@@ -14,6 +14,8 @@ The intention here is to highlight the features of the `dsm` package, rather tha
 
 This is a `knitr` document. The source for this document contains everything you need to reproduce the analysis given here (aside from the data). The most recent version of this document can be found at [github.com/dill/mexico-data](http://github.com/dill/mexico-data).
 
+In section 2, we show how the data and packages can be loaded, before moving on to describing the data and then producing some exploratory plots (in sections 3 and 4, respectively). In section 5 we fit a detection function, then a selection of DSMs in section 6. A detection function with covariates is fitted in section 7. An example using correlation structures is shown in section 8, before concluding.
+
 ## Preamble
 
 Before we start, we load the `dsm` package (and its dependencies) and set some options:
@@ -98,7 +100,7 @@ hist(distdata$distance,main="",xlab="Distance (m)")
 hist(distdata$size,main="",xlab="Cluster size")
 
 # plots of distance vs. cluster size
-plot(distdata$distance, distdata$size, main="", xlab="Distance (m)",
+plot(distdata$distance, distdata$size, main="", xlab="Distance (m)", 
 ylab="Group size", pch=19, cex=0.5, col=rgb(0.74,0.74,0.74,0.7))
 
 # lm fit
@@ -113,7 +115,7 @@ ylab="Beaufort sea state", pch=19, cex=0.5, col=rgb(0.74,0.74,0.74,0.7))
 
 ### Spatial data
 
-Looking separately at the at the spatial data without thinking about the distances, we can see the distribution of group size in space in Figure 3, below. Circle size indicates the size of the group in the observation. There are rather large areas with no observations, which might cause our variance estimates to be rather large. This plot shows that we don't seem to have many observations in the very shallow areas near the shore. This should make us skeptical of predictions in those areas.We will use depth later as an explanatory covariate in our spatial model. Figure 3 also shows the raw depth data.
+Looking separately at the spatial data without thinking about the distances, we can see the distribution of group size in space in Figure 3, below. Circle size indicates the size of the group in the observation. There are rather large areas with no observations, which might cause our variance estimates to be rather large. This plot shows that we don't seem to have many observations in the very shallow areas near the shore. This should make us skeptical of predictions in those areas. We will use depth later as an explanatory covariate in our spatial model. Figure 3 also shows the raw depth data.
 
 The following code generates Figure 3:
 ``` {r fig.cap="Plot of depth values over the survey area with transects and observations overlaid. Point size is proportional to the group size for each observation."}
@@ -203,19 +205,22 @@ To check for residual autocorrelation we use the `dsm.cor` function:
 ```{r mod1-cor, fig.cap="Residual autocorrelation in `mod1`."}
 dsm.cor(mod1,max.lag=10)
 ```
-The plot is shown in Figure 7, and appears to have no issues with autocorrelation.
+The plot is shown in Figure 7, and appears to have a spike at lag 6, but this is beyond the range of being interesting.
 
-We can use the approach of Williams *et al* (2011), which accounts for uncertainty in detection function estimation.
+We can use the approach of Williams *et al* (2011), which accounts for uncertainty in detection function estimation in this situation where we have no covariates in the detection function.
 
 ``` {r}
 preddata.varprop <- split(preddata,1:nrow(preddata))
 offset.varprop <- as.list(rep(off.set,nrow(preddata)))
-mod1.varprop <- dsm.var.prop(mod1,pred.data=preddata.varprop,off.set=offset.varprop)
+mod1.varprop <- dsm.var.prop(mod1, pred.data=preddata.varprop,
+off.set=offset.varprop)
 ```
 Calling `summary` will give some information about uncertainty estimation:
 ``` {r}
 summary(mod1.varprop)
 ```
+
+The section titled `Quantiles of differences between fitted model and variance model` can be used to check the variance model does not have major problems (values much less than 1 indicate no issues).
 
 We can also make a plot of the CVs using the following code (shown in Figure 8).
 ``` {r, fig.cap="Plot of the coefficient of variation for the study area with transect lines and observations overlaid."}
@@ -257,7 +262,7 @@ Omitting the argument `select` in the call to `plot` gives plots of all the smoo
 
 ***Tweedie***
 
-Response distributions other than the quasi-Poisson can be used, for example the Tweedie distribution. If the Tweedie is used, then the `p` parameter must be specified. Mark Bravington (via personal communication) suggests the use of `p=1.2` for marine mammal work. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the score of the resulting models.
+Response distributions other than the quasi-Poisson can be used, for example the Tweedie distribution. If the Tweedie is used, then the `p` parameter must be specified. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the score of the resulting models. In this simple example we only show the difference between two values for `p`.
 ``` {r}
 mod3.12 <- dsm(N~s(x,y), hr.model, segdata, obsdata,
             family=Tweedie(p=1.2))
@@ -278,10 +283,10 @@ The plot (Figure 11, right panel; code below), appears to be much flatter.
 ```{r tweedie-17-residplot, fig.cap="Plot of absolute value of the residuals versus the fitted values for the Tweedie model when `p=1.2` (left) and  `p=1.7` (right). Note that the right plot is much flatter than the left."}
 par(mfrow=c(1,2))
 plot(sqrt(abs(residuals(mod3.12))),predict(mod3.12),
-xlab="Square root of the absolute value of the residuals",
+xlab="Square root of the\nabsolute value of the residuals",
 ylab="Fitted values",main="p=1.2")
 plot(sqrt(abs(residuals(mod3.17))),predict(mod3.17),
-xlab="Square root of the absolute value of the residuals",
+xlab="Square root of the\nabsolute value of the residuals",
 ylab="Fitted values",main="p=1.7")
 ```
 Note also the improvement in GCV score.
@@ -292,13 +297,13 @@ In general, a "good" value can be found by simply plotting the above along with 
 
 To account for a complex region (e.g., a region that includes peninsulae) we can use the soap film smoother (Wood et al. 2008).
 
-In order to use a soap film smoother for the spatial part of the model we must create a set of knots for the smoother to use. This is easily done using the `make.soapgrid()` function in `dsm`:
+To use a soap film smoother for the spatial part of the model we must create a set of knots for the smoother to use. This is easily done using the `make.soapgrid()` function in `dsm`:
 ``` {r}
 soap.knots <- make.soapgrid(survey.area,c(11,6))
 # knot 11 is not outside but is too close according to soap...
 soap.knots <- soap.knots[-11,]
 ```
-where the second argument specifies the size of the grid that will be used to create the knots (knots in the grid outside of `survey.area` are removed).
+where the second argument specifies the number of points (in eadch direction) in the grid that will be used to create the knots (knots in the grid outside of `survey.area` are removed).
 
 As we saw in the exploratory analysis, some of the transect lines are outside of the survey area. These will cause the soap film smoother to fail, so we remove them:
 ``` {r}
@@ -341,21 +346,24 @@ formula=~as.factor(beaufort),
 key="hr", adjustment=NULL)
 summary(hr.beau.model)
 ```
+In this example, the detection function with covariates does not give a lower AIC than the model without covariates (hazard-rate model has AIC of `r round(hr.model$ddf$criterion,2)` vs. `r round(hr.beau.model$ddf$criterion,2)` for this model). Looking back to the bottom-right panel of Figure 2, we can see there is not a discernible pattern in the plot of Beaufort vs distance.
 
-We fit the model as above, simply replacing the detection function model object and changing the response to be `Nhat` so the abundances are estimated per segment:
+
+The code to fit the model is similar to the other models, above. However since we are now using a detection function with observation-level covariates, we change the response to be `Nhat` so the abundances are estimated per segment and change the name ofthe detection function model object:
 ``` {r cache=TRUE}
 mod5 <- dsm(Nhat~s(x,y), hr.beau.model, segdata, obsdata)
 summary(mod5)
 ```
 Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams et al (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`), or use the moving block bootstrap. Other than this, all of the above functions can be used.
 
-A plot of predicitons from the covariate model:
+A plot of predictions from the covariate model:
 ``` {r mod5-pred, fig.cap="Predicted density surface for `mod5`."}
 mod5.pred <- predict(mod5,preddata, off.set)
 pp <- cbind(preddata,mod5.pred)
 
 p <- ggplot(pp) + gg.opts
-p <- p + geom_tile(aes(x=x,y=y,fill=mod5.pred,width=width,height=height))
+p <- p + geom_tile(aes(x=x, y=y, fill=mod5.pred,
+width=width, height=height))
 p <- p + coord_equal()
 p <- p + geom_path(aes(x=x, y=y),data=survey.area)
 p <- p + labs(fill="Abundance")
@@ -364,7 +372,7 @@ print(p)
 
 ## Correlation structures
 
-We can use a generalized mixed model (GAMM; Wood, 2006) to include correlation between the segments within each transect. First we re-code the sample labels and transect labels as numeric variables, then include them in the model as part of the `correlation` argument. The correlation structure we choose here is AR1 (lag 1 autocorrelation).
+We can use a generalized mixed model (GAMM; Wood, 2006) to include correlation between the segments within each transect. First we re-code the sample labels and transect labels as numeric variables, then include them in the model as part of the `correlation` argument. For the sake of example we use an AR1 (lag 1 autocorrelation) correlation structure (though the correlogram did not indicate we had issues with residual autocorrelation, we show it here for illustrative purposes).
 
 ```{r cache=TRUE}
 segdata$sg.id <- as.numeric(segdata$Sample.Label)
@@ -406,10 +414,10 @@ mod1.gamm.var <- dsm.var.prop(mod1.gamm,pred.data=preddata,off.set=off.set)
 summary(mod1.gamm.var)
 ```
 
-Comparing this to the variance from `mod2`, we can see the GAMM offers a significant reduction in variance:
+Comparing this to the variance from `mod1`, we can see the GAMM offers a significant reduction in variance:
 ```{r cache=TRUE}
-mod2.varprop <- dsm.var.prop(mod2, pred.data = preddata.varprop, off.set = offset.varprop)
-summary(mod2.varprop)
+mod1.varprop <- dsm.var.prop(mod1, pred.data = preddata.varprop, off.set = offset.varprop)
+summary(mod1.varprop)
 ```
 
 More information on `lme` can be found in Pinheiro and Bates (2000) and Wood (2006).
@@ -427,6 +435,6 @@ This document has shown that the `dsm` package is a versatile and relatively eas
 ## References
 
  * Hedley, S.L. & Buckland, S.T. (2004) Spatial models for line transect sampling. Journal of Agricultural, Biological, and Environmental Statistics, 9, 181–199.
- * Pinheiro, J.C., and Bates, D.M. (2000) "Mixed-Effects Models in S and S-PLUS", Springer.
- * Williams, R., Hedley, S.L., Branch, T.A., Bravington, M.V., Zerbini, A.N. & Findlay, K.P. (2011) Chilean Blue Whales as a Case Study to Illustrate Methods to Estimate Abundance and Evaluate Conservation Status of Rare Species. Conservation Biology, 25, 526–535.
- * Wood, S.N. (2006) Generalized Additive Models: An Introduction with R. Chapman and Hall/CRC Press.
+ * Pinheiro, J.C., and Bates, D.M. (2000) Mixed-effects models in S and S-PLUS, Springer.
+ * Williams, R., Hedley, S.L., Branch, T.A., Bravington, M.V., Zerbini, A.N. & Findlay, K.P. (2011) Chilean blue whales as a case study to illustrate methods to estimate abundance and evaluate conservation status of rare species. Conservation Biology, 25, 526–535.
+ * Wood, S.N. (2006) Generalized Additive Models: an introduction with R. Chapman and Hall/CRC Press.

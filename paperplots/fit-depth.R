@@ -12,6 +12,7 @@ gg.opts <- opts(panel.grid.major=theme_blank(),
 library(maps)
 # make the results reproducable
 set.seed(11123)
+library(gridExtra)
 
 library(maptools)
 survey.area<-readShapeSpatial("../data/Study_ar")
@@ -51,6 +52,50 @@ plot.breaks <- c(0,10,50,100,200,500,1000,2000,3000)#,5000,7000,7500)
 plot.lims<-c(0,max(mod2.pred,mod2.xy.pred))
 grad.obj <- scale_fill_gradient(high="black",low="white",limits=plot.lims,trans="sqrt")
 
+
+## plot smooth of depth
+#quartz()
+pdf("fit-depth-gam.pdf", width=5,height=5)
+plot(mod2,select=1,ylab="Smooth of depth")
+dev.off()
+
+# from http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
 ## @knitr mod2-preds
 pp<-cbind(preddata,mod2.pred)
 pp$x<-pp$x/1000
@@ -58,21 +103,15 @@ pp$y<-pp$y/1000
 pp$width <- pp$width/1000
 pp$height <- pp$height/1000
 
-p<-ggplot(pp)+gg.opts
-p <- p + labs(fill="Abundance",x="Easting",y="Northing")
-p<-p+geom_tile(aes(x=x,y=y,fill=mod2.pred,width=width,height=height))
-p <- p + coord_equal()
-p <- p + grad.obj
-p<-p+geom_path(aes(x=x, y=y),data=survey.area)
-print(p)
-ggsave("fit-depth.pdf", width=9,height=5)
+p.depth<-ggplot(pp)+gg.opts
+p.depth <- p.depth + labs(fill="Abundance",x="Easting",y="Northing")
+p.depth<-p.depth+geom_tile(aes(x=x,y=y,fill=mod2.pred,width=width,height=height))
+p.depth <- p.depth + coord_equal()
+p.depth <- p.depth + grad.obj
+p.depth<-p.depth+geom_path(aes(x=x, y=y),data=survey.area)
+#print(p.depth)
+#ggsave("fit-depth.pdf", width=9,height=5)
 
-
-## plot smooth of depth
-#quartz()
-pdf("fit-depth-gam.pdf", width=5,height=5)
-plot(mod2,select=1,ylab="Smooth of depth")
-dev.off()
 
 #quartz()
 
@@ -83,15 +122,17 @@ pp$x<-pp$x/1000
 pp$y<-pp$y/1000
 pp$width <- pp$width/1000
 pp$height <- pp$height/1000
-p<-ggplot(pp)+gg.opts
-p <- p + labs(fill="Abundance",x="Easting",y="Northing")
-p<-p+geom_tile(aes(x=x,y=y,fill=mod2.xy.pred,width=width,height=height))
-p <- p + coord_equal()
-p <- p + grad.obj
-p<-p+geom_path(aes(x=x, y=y),data=survey.area)
-print(p)
-ggsave("fit-depth-xy.pdf", width=9,height=5)
+p.depth.xy<-ggplot(pp)+gg.opts
+p.depth.xy <- p.depth.xy + labs(fill="Abundance",x="Easting",y="Northing")
+p.depth.xy<-p.depth.xy+geom_tile(aes(x=x,y=y,fill=mod2.xy.pred,width=width,height=height))
+p.depth.xy <- p.depth.xy + coord_equal()
+p.depth.xy <- p.depth.xy + grad.obj
+p.depth.xy<-p.depth.xy+geom_path(aes(x=x, y=y),data=survey.area)
+#print(p.depth.xy)
+#ggsave("fit-depth-xy.pdf", width=9,height=5)
 
+multiplot(p.depth,p.depth.xy)
+ggsave("fit-depths.pdf",width=9,height=10)
 
 
 ## uncertainty plotting

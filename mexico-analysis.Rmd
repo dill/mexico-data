@@ -1,4 +1,4 @@
-`r opts_chunk$set(fig.width=7, fig.height=5, fig.path='mexico-figs/', cache.path='mexico-cache/')`
+`r opts_chunk$set(fig.path='mexico-figs/')`
 
 ### Spatial models for distance sampling data: recent developments and future directions
 
@@ -202,8 +202,8 @@ gam.check(mod1)
 These show that there is some deviation in the Q-Q plot. The "line" of points in the plot of the residuals vs. linear predictor plot corresponds to the zeros in the data.
 
 To check for residual autocorrelation we use the `dsm.cor` function:
-```{r mod1-cor, fig.cap="Residual autocorrelation in `mod1`."}
-dsm.cor(mod1,max.lag=10)
+```{r mod1-cor, fig.cap="Residual autocorrelation in `mod1`.", eval=FALSE}
+dsm.cor(mod1,max.lag=10,Segment.Label="Sample.Label")
 ```
 The plot is shown in Figure 7, and appears to have a spike at lag 6, but this is beyond the range of being interesting.
 
@@ -224,7 +224,9 @@ The section titled `Quantiles of differences between fitted model and variance m
 
 We can also make a plot of the CVs using the following code (shown in Figure 8).
 ``` {r, fig.cap="Plot of the coefficient of variation for the study area with transect lines and observations overlaid."}
-plot(mod1.varprop,xlab="Easting",ylab="Northing")
+p <- plot(mod1.varprop,xlab="Easting",ylab="Northing",plot=FALSE)
+p <- p + coord_equal()
+print(p)
 ```
 
 
@@ -323,7 +325,7 @@ summary(mod4)
 ```
 
 
-Comparing predictions from the model that included a smooth of depth, we can see that the soap film has prevented some of the extreme values (especially in the lower right corner of the survey area). This is shown in Figure 12 (figure created with the code below).
+Comparing predictions from the model that included a smooth of depth, predictions are shown in Figure 12 (figure created with the code below).
 
 ``` {r mod4-pred, fig.cap="Predicted density surface for `mod4`.", cache=TRUE}
 mod4.pred <- predict(mod4,preddata, off.set)

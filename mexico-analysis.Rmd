@@ -1,14 +1,90 @@
-`r opts_chunk$set(fig.path='mexico-figs/')`
+---
+title: "Example `dsm` analysis: pantropical dolphins in the Gulf of Mexico"
+author: "David L. Miller"
+date: "October 2014"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
 
-### Spatial models for distance sampling data: recent developments and future directions
+```{r echo=FALSE}
+# taken from http://gforge.se/2014/01/fast-track-publishing-using-knitr-part-iii/
+library(knitr)
+options(figure_counter = TRUE)
 
-# Appendix A: Example `dsm` analysis
+# Evaluate the figure caption after the chunk,
+# sometimes you want to calculate stuff inside the
+# chunk that you want to include in the caption and
+# it is therefore useful to evaluate it afterwards.
+opts_knit$set(eval.after='fig.cap')
 
-### David L. Miller, M. Louise Burt, Eric A. Rexstad and Len Thomas.
+# The actual hook
+knit_hooks$set(plot = function(x, options) {
+  fig_fn = paste0(opts_knit$get("base.url"),
+                  paste(x, collapse = "."))
 
-## Introduction
+  # Some stuff from the default definition
+  fig.cap <- knitr:::.img.cap(options)
 
-The analysis is based on a dataset of observations of pantropical dolphins in the Gulf of Mexico (shipped with Distance 6.0). For convenience the data are bundled in an `R`-friendly format, although all of the code necessary for creating the data from the Distance project files is available at the below URL. The OBIS-SEAMAP page for the data may be found at [http://seamap.env.duke.edu/dataset/25](http://seamap.env.duke.edu/dataset/25).
+  # Style and additional options that should be included in the img tag
+  style=c("display: block",
+          sprintf("margin: %s;",
+                   switch(options$fig.align,
+                          left = 'auto auto auto 0',
+                          center = 'auto',
+                          right = 'auto 0 auto auto')))
+  # Certain arguments may not belong in style,
+  # for instance the width and height are usually
+  # outside if the do not have a unit specified
+  addon_args = ""
+
+  # This is perhaps a little overly complicated prepared
+  # with the loop but it allows for a more out.parameters if necessary
+  if (any(grepl("^out.(height|width)", names(options)))){
+      on <- names(options)[grep("^out.(height|width)", names(options))]
+      for(out_name in on){
+          dimName <- substr(out_name, 5, nchar(out_name))
+          if (grepl("[0-9]+(em|px|%|pt|pc|in|cm|mm)", out_name))
+              style=append(style, paste0(dimName, ": ", options[[out_name]]))
+          else if (length(options$out.width) > 0)
+              addon_args = paste0(addon_args, dimName, "='", options[[out_name]], "'")
+      }
+  }
+
+  # Add counter if wanted
+  fig_number_txt <- ""
+  cntr <- getOption("figure_counter", FALSE)
+  if (cntr != FALSE){
+    if (is.logical(cntr))
+      cntr <- 1
+    # The figure_counter_str allows for custom
+    # figure text, you may for instance want it in
+    # bold: <b>Figure %s:</b>
+    # The %s is so that you have the option of setting the
+    # counter manually to 1a, 1b, etc if needed
+    fig_number_txt <-
+      sprintf(getOption("figure_counter_str", "Figure %s: "),
+              ifelse(getOption("figure_counter_roman", FALSE),
+                     as.character(as.roman(cntr)), as.character(cntr)))
+
+    if (is.numeric(cntr))
+      options(figure_counter = cntr + 1)
+  }
+
+  # Put it all together
+  paste0("<figure><img src='", fig_fn, "'",
+         " ", addon_args,
+         paste0(" style='", paste(style, collapse="; "), "'"),
+         ">",
+         "<figcaption>", fig_number_txt, fig.cap, "</figcaption></figure>")
+})
+```
+
+
+# Introduction
+
+The analysis is based on a dataset of observations of pantropical dolphins in the Gulf of Mexico (shipped with Distance 6.0 and later). For convenience the data are bundled in an `R`-friendly format, although all of the code necessary for creating the data from the Distance project files is available at the below URL. The OBIS-SEAMAP page for the data may be found at the [SEFSC GoMex Oceanic 1996](http://seamap.env.duke.edu/dataset/25) survey page.
 
 The intention here is to highlight the features of the `dsm` package, rather than perform a full analysis of the data. For that reason, some important steps are not fully explored. Some familiarity with density surface modelling is assumed.
 
@@ -16,11 +92,12 @@ This is a `knitr` document. The source for this document contains everything you
 
 In section 2, we show how the data and packages can be loaded, before moving on to describing the data and then producing some exploratory plots (in sections 3 and 4, respectively). In section 5 we fit a detection function, then a selection of DSMs in section 6. A detection function with covariates is fitted in section 7. An example using correlation structures is shown in section 8, before concluding.
 
-## Preamble
+# Preamble
 
 Before we start, we load the `dsm` package (and its dependencies) and set some options:
 ``` {r}
 library(dsm)
+library(ggplot2)
 
 # plotting options
 gg.opts <- theme(panel.grid.major=element_blank(),
@@ -31,9 +108,9 @@ gg.opts <- theme(panel.grid.major=element_blank(),
 set.seed(11123)
 ```
 
-## The data
+# The data
 
-### Observation and segment data
+## Observation and segment data
 
 All of the data for this analysis has been nicely pre-formatted and is shipped with `dsm`. Loading up that data, we can see that we have four data frames, the first few lines of each are shown:
 ``` {r}
@@ -49,7 +126,7 @@ head(preddata)
 Typically (i.e. for other datasets) it will be necessary divide the transects into segments, and allocate observations to the correct segments using a GIS or other similar package, before starting an analysis using `dsm`.
 
 
-### Converting units
+## Converting units
 
 It is important to ensure that the measurements to be used in the analysis are in compatible units, otherwise the resulting estimates will be incorrect or hard to interpret. Having all of our measurements in SI units from the outset removes the need for conversion later, making life much easier. All of the data are already in the appropriate units (Northings and Eastings: kilometres from ~ -88.32 longitude, ~27.02 latitude, which is the centroid of the study region, multiplied up by 1000 to get the result in metres, for consistency).
 
@@ -66,7 +143,7 @@ survey.area <- data.frame(x=1000*sa.tmp$km.e, y=1000*sa.tmp$km.n)
 
 rm(sa.tmp)
 ```
-The function `latlong2km` uses the spherical law of cosines to convert latitude and longitude into Northings and Eastings (thanks to Simon N. Wood for providing code). There is extensive literature about when particular projections of latitude and longitude are appropriate and we highly recommend the reader review this for their particular study area. The other data frames have already had their measurements appropriately converted. By convention the directions are named `x` and `y`.
+The function `latlong2km` uses the spherical law of cosines to convert latitude and longitude into Northings and Eastings (thanks to Simon N. Wood for providing code). There is extensive literature about when particular projections of latitude and longitude are appropriate and we highly recommend the reader review this for their particular study area; Bivand et al (2013) is a good starting point. The other data frames have already had their measurements appropriately converted. By convention the directions are named `x` and `y`.
 
 Using latitude and longitude when performing spatial smoothing can be problematic when certain smoother bases are used. In particular when bivariate isotropic bases are used the non-isotropic nature of latitude and longitude is inconsistent (moving one degree in one direction is not the same as moving one degree in the other).
 
@@ -84,9 +161,9 @@ print(p)
 ```
 
 
-## Exploratory data analysis
+# Exploratory data analysis
 
-### Distance data
+## Distance data
 
 The top panels of Figure 2, below, show histograms of observed distances and cluster size, while the bottom panels show the relationship between observed distance and observed cluster size, and the relationship between observed distance and Beaufort sea state. The plots show that there is some relationship between cluster size and observed distance (fewer smaller clusters seem to be seen at larger distances).
 
@@ -113,7 +190,7 @@ ylab="Beaufort sea state", pch=19, cex=0.5, col=rgb(0.74,0.74,0.74,0.7))
 ```
 
 
-### Spatial data
+## Spatial data
 
 Looking separately at the spatial data without thinking about the distances, we can see the distribution of group size in space in Figure 3, below. Circle size indicates the size of the group in the observation. There are rather large areas with no observations, which might cause our variance estimates to be rather large. This plot shows that we don't seem to have many observations in the very shallow areas near the shore. This should make us skeptical of predictions in those areas. We will use depth later as an explanatory covariate in our spatial model. Figure 3 also shows the raw depth data.
 
@@ -130,7 +207,7 @@ print(p)
 ```
 
 
-## Estimating the detection function
+# Estimating the detection function
 
 We use the `ds` function in the package `Distance` to fit the detection function.  (The `Distance` package is intended to make standard distance sampling in `R` relatively straightforward.  For a more flexible, but harder to use, alternaitve, see the function `ddf` in the `mrds` library.)
 
@@ -147,19 +224,19 @@ summary(hr.model)
 ```
 
 The following code generates a plot of the fitted detection function (Figure 4):
-``` {r hr-detfct, fig.cap="Plot of the fitted detection function."}
+``` {r hr-detfct, fig.cap="Plot of the fitted detection function.", fig.width=6, fig.height=6}
 plot(hr.model)
 ```
 
 For brevity, detection function model selection has been omitted here. In practise we would fit many different forms for the detection function. Later in this document, we demonstrate fitting of a detection function with size as a covariate, but for now we stick to a simple model.
 
 
-## Fitting a DSM 
+# Fitting a DSM 
 
 Before fitting a `dsm` model, the data must be segmented; this consists of chopping up the transects and attributing counts to each of the segments. As mentioned above, these data have already been segmented.
 
 
-### A simple model
+## A simple model
 
 We begin with a very simple model. We assume that the number of individuals in each segment are quasi-Poisson distributed and that they are a smooth function of their spatial coordinates (note that the formula is exactly as one would specify to `gam` in `mgcv`). The abundance of clusters/groups rather than individuals can be estimated by setting `group=TRUE` (though we ignore this here).
 
@@ -195,14 +272,14 @@ sum(mod1.pred)
 ```
 
 Figure 6 shows diagnostic plots for the model, generated with the following code:.
-``` {r mod1-check, fig.cap="Diagnostic plots for `mod1`."}
+``` {r mod1-check, fig.cap="Diagnostic plots for `mod1`.", fig.width=6, fig.height=6}
 gam.check(mod1)
 ```
 
 These show that there is some deviation in the Q-Q plot. The "line" of points in the plot of the residuals vs. linear predictor plot corresponds to the zeros in the data.
 
 To check for residual autocorrelation we use the `dsm.cor` function:
-```{r mod1-cor, fig.cap="Residual autocorrelation in `mod1`.", eval=FALSE}
+```{r mod1-cor, fig.cap="Residual autocorrelation in `mod1`.", fig.height=5, fig.width=5}
 dsm.cor(mod1,max.lag=10,Segment.Label="Sample.Label")
 ```
 The plot is shown in Figure 7, and appears to have a spike at lag 6, but this is beyond the range of being interesting.
@@ -230,7 +307,7 @@ print(p)
 ```
 
 
-### Adding another covariate to the spatial model
+## Adding another covariate to the spatial model
 
 The data set also contains a `depth` covariate (which we plotted above). We can include in the model very simply:
 ``` {r}
@@ -255,52 +332,40 @@ print(p)
 ```
 
 Simply calling `plot` on the model object allows us to look at the relationship between depth and abundance (shown in Figure 10):
+
 ``` {r mod2-depth, fig.cap="Plot of the smooth of depth in `mod2`."}
 plot(mod2, select=2)
 ```
+
 Omitting the argument `select` in the call to `plot` gives plots of all the smooth terms, one at a time.
 
-### A more complicated model
+## More complicated models
 
-***Tweedie***
+### Tweedie
 
-Response distributions other than the quasi-Poisson can be used, for example the Tweedie distribution. If the Tweedie is used, then the `p` parameter must be specified. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the score of the resulting models. In this simple example we only show the difference between two values for `p`.
-``` {r}
+Response distributions other than the quasi-Poisson can be used, for example the Tweedie distribution. The Tweedie distribution is available in `dsm` via two different `family=` options.
+
+  1. If the `family=Tweedie(p=...)` is used, then the `p` parameter must be specified. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the GCV/UBRE/REML score of the resulting models. As well as looking at the GCV/UBRE/REML score of the model to assess the value of `p` we can also look at a plot of the square root of the absolute value of the residuals versus the fitted values. In general, a "good" value of `p` can be found by testing values of `p` between 1.1 and 1.9 and looking for the best GCV and "flattest" plot.
+  2. Instead one may use `family=tw()`, which will automatically estimate the Tweedie parameter. This option is recommended.
+
+
+``` {r tweedie-fit}
 mod3.12 <- dsm(N~s(x,y), hr.model, segdata, obsdata,
-            family=Tweedie(p=1.2))
+            family=tw())
 summary(mod3.12)
 ```
 
-As well as looking at the GCV/UBRE/REML score of the model to assess the value of `p` we can also look at a plot of the square root of the absolute value of the residuals versus the fitted values (Figure 11, left panel).
+### Negative binomial
 
-where as setting `p=1.7`:
-``` {r tweedie-17}
-mod3.17 <- dsm(N~s(x,y), hr.model, segdata, obsdata,
-            family=Tweedie(p=1.7))
-summary(mod3.17)
-```
+Though not used here there are, similarly, two options for the negative binomial distribution: `negbin` and `nb`. The former requires a single parameter `theta` or a range (specified as a vector), the latter estimates the value of `theta`. The latter is recommended for most users.
 
-The plot (Figure 11, right panel; code below), appears to be much flatter.
 
-```{r tweedie-17-residplot, fig.cap="Plot of absolute value of the residuals versus the fitted values for the Tweedie model when `p=1.2` (left) and  `p=1.7` (right). Note that the right plot is much flatter than the left."}
-par(mfrow=c(1,2))
-plot(sqrt(abs(residuals(mod3.12))),predict(mod3.12),
-xlab="Square root of the\nabsolute value of the residuals",
-ylab="Fitted values",main="p=1.2")
-plot(sqrt(abs(residuals(mod3.17))),predict(mod3.17),
-xlab="Square root of the\nabsolute value of the residuals",
-ylab="Fitted values",main="p=1.7")
-```
-Note also the improvement in GCV score.
-
-In general, a "good" value can be found by simply plotting the above along with the GCV score for the model for values of `p` between 1.1 and 1.9 and looking for the best GCV and "flattest" plot.
-
-***Soap film smoothing***
+### Soap film smoothing
 
 To account for a complex region (e.g., a region that includes peninsulae) we can use the soap film smoother (Wood et al. 2008).
 
 To use a soap film smoother for the spatial part of the model we must create a set of knots for the smoother to use. This is easily done using the `make.soapgrid()` function in `dsm`:
-``` {r}
+``` {r soap-knots}
 soap.knots <- make.soapgrid(survey.area,c(11,6))
 # knot 11 is not outside but is too close according to soap...
 soap.knots <- soap.knots[-11,]
@@ -308,7 +373,7 @@ soap.knots <- soap.knots[-11,]
 where the second argument specifies the number of points (in eadch direction) in the grid that will be used to create the knots (knots in the grid outside of `survey.area` are removed).
 
 As we saw in the exploratory analysis, some of the transect lines are outside of the survey area. These will cause the soap film smoother to fail, so we remove them:
-``` {r}
+``` {r, soap-setup}
 x <- segdata$x; y<-segdata$y
 onoff <- inSide(x=x,y=y, bnd=as.list(survey.area))
 rm(x,y)
@@ -317,7 +382,7 @@ segdata.soap <- segdata[onoff,]
 
 We can run a model with both the `depth` covariate along with a spatial (soap film) smooth. Note that the `k` argument now refers to the complexity of the boundary smooth in the soap film, and the complexity of the film is controlled by the knots given in the `xt` argument.
 
-``` {r cache=TRUE}
+``` {r soap-fit, cache=TRUE}
 mod4<-dsm(N~s(x,y, bs="so",k=10,xt=list(bnd=list(survey.area)))
 +s(depth),
 hr.model, segdata.soap, obsdata, knots=soap.knots)
@@ -325,7 +390,7 @@ summary(mod4)
 ```
 
 
-Comparing predictions from the model that included a smooth of depth, predictions are shown in Figure 12 (figure created with the code below).
+Comparing predictions from the model that included a smooth of depth, predictions are shown in Figure 10 (figure created with the code below).
 
 ``` {r mod4-pred, fig.cap="Predicted density surface for `mod4`.", cache=TRUE}
 mod4.pred <- predict(mod4,preddata, off.set)
@@ -339,7 +404,7 @@ p <- p + labs(fill="Abundance")
 print(p)
 ```
 
-## Adding covariates to the detection function
+# Adding covariates to the detection function
 
 It is common to include covariates in the detection function (so-called Multiple Covariate Distance Sampling or MCDS). In this dataset there are two covariates that were collected on each individual: Beaufort sea state and size. For brevity we fit only a hazard-rate detection functions with the sea state included as a factor covariate as follows:
 ``` {r message=FALSE, cache=TRUE, warning=FALSE}
@@ -372,7 +437,7 @@ p <- p + labs(fill="Abundance")
 print(p)
 ```
 
-## Correlation structures
+# Correlation structures
 
 We can use a generalized mixed model (GAMM; Wood, 2006) to include correlation between the segments within each transect. First we re-code the sample labels and transect labels as numeric variables, then include them in the model as part of the `correlation` argument. For the sake of example we use an AR1 (lag 1 autocorrelation) correlation structure (though the correlogram did not indicate we had issues with residual autocorrelation, we show it here for illustrative purposes).
 
@@ -392,13 +457,13 @@ The object returned is part `lme` (for the random effects) and part `gam` (for t
 summary(mod1.gamm$gam)
 ```
 
-And run checks on the GAM part of the object (shown in Figure 14):
+And run checks on the GAM part of the object (shown in Figure 12):
 
-```{r mod1-gamm-check, fig.cap="Diagnostic plots for `mod1.gamm`."}
+```{r mod1-gamm-check, fig.cap="Diagnostic plots for `mod1.gamm`.", fig.width=6, fig.height=6}
 gam.check(mod1.gamm$gam)
 ```
 
-We can now make predictions and compare the abundance map produced by this model to the previous models (Figure 15):
+We can now make predictions and compare the abundance map produced by this model to the previous models (Figure 13):
 ```{r mod1-gamm-preds, fig.cap="Predicted density surface for `mod1.gamm`."}
 mod1.gamm.pred <- predict(mod1.gamm, preddata, off.set)
 pp <- cbind(preddata,N=mod1.gamm.pred)
@@ -425,18 +490,22 @@ summary(mod1.varprop)
 More information on `lme` can be found in Pinheiro and Bates (2000) and Wood (2006).
 
 
-## Conclusions
+# Conclusions
 
 This document has shown that the `dsm` package is a versatile and relatively easy-to-use package for the analysis of spatial distance sampling data. Note that there are many possible models that can be fitted using `dsm` and that the aim here was to show just a few of the options. Results from the models can be rather different, so care must be taken in performing model selection, discrimination and criticism.
 
 
-## Notes
- * `Distance` is available at [http://github.com/dill/Distance](http://github.com/dill/Distance) as well as on CRAN.
- * `dsm` is available (along with some documentation and hints) at [http://github.com/dill/dsm](http://github.com/dill/dsm), as well as on CRAN.
+# Notes
+ * `Distance` is available at [http://github.com/DistanceDevelopment/Distance](http://github.com/DistanceDevelopment/Distance) as well as on CRAN.
+ * `dsm` is available (along with some documentation and hints) at [http://github.com/DistanceDevelopment/dsm](http://github.com/DistanceDevelopment/dsm), as well as on CRAN.
 
-## References
+# References
 
- * Hedley, S.L. & Buckland, S.T. (2004) Spatial models for line transect sampling. Journal of Agricultural, Biological, and Environmental Statistics, 9, 181–199.
- * Pinheiro, J.C., and Bates, D.M. (2000) Mixed-effects models in S and S-PLUS, Springer.
- * Williams, R., Hedley, S.L., Branch, T.A., Bravington, M.V., Zerbini, A.N. & Findlay, K.P. (2011) Chilean blue whales as a case study to illustrate methods to estimate abundance and evaluate conservation status of rare species. Conservation Biology, 25, 526–535.
- * Wood, S.N. (2006) Generalized Additive Models: an introduction with R. Chapman and Hall/CRC Press.
+ * Bivand, RS, E Pebesma, and V Gomez-Rubio. Applied Spatial Data Analysis with R, Springer Science & Business Media, 2013.
+ * Hedley, SL & Buckland, ST (2004) Spatial models for line transect sampling. Journal of Agricultural, Biological, and Environmental Statistics, 9, 181–199.
+ * Miller, DL, ML Burt, EA Rexstad, and L Thomas. Spatial Models for Distance Sampling Data: Recent Developments and Future Directions. Methods in Ecology and Evolution 4(11) (2013): 1001–10. doi:10.1111/2041-210X.12105.
+ * Pinheiro, JC, and Bates, DM (2000) Mixed-effects models in S and S-PLUS, Springer.
+ * Williams, R, Hedley, SL, Branch, TA, Bravington, MV, Zerbini, AN & Findlay, KP (2011) Chilean blue whales as a case study to illustrate methods to estimate abundance and evaluate conservation status of rare species. Conservation Biology, 25, 526–535.
+ * Wood, SN (2006) Generalized Additive Models: an introduction with R. Chapman and Hall/CRC Press.
+
+

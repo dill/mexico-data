@@ -1,12 +1,10 @@
 \documentclass[]{article}
-\usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
 \usepackage{fixltx2e} % provides \textsubscript
-% use upquote if available, for straight quotes in verbatim environments
-\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
 \else % if luatex or xelatex
   \ifxetex
@@ -18,8 +16,13 @@
   \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
   \newcommand{\euro}{€}
 \fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
 % use microtype if available
-\IfFileExists{microtype.sty}{\usepackage{microtype}}{}
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
 \usepackage{color}
 \usepackage{fancyvrb}
 \newcommand{\VerbBar}{|}
@@ -42,24 +45,14 @@
 \newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{{#1}}}}
 \newcommand{\NormalTok}[1]{{#1}}
 \usepackage{graphicx}
-% Redefine \includegraphics so that, unless explicit options are
-% given, the image width will not exceed the width of the page.
-% Images get their normal width if they fit onto the page, but
-% are scaled down if they would overflow the margins.
 \makeatletter
-\def\ScaleIfNeeded{%
-  \ifdim\Gin@nat@width>\linewidth
-    \linewidth
-  \else
-    \Gin@nat@width
-  \fi
-}
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
 \makeatother
-\let\Oldincludegraphics\includegraphics
-{%
- \catcode`\@=11\relax%
- \gdef\includegraphics{\@ifnextchar[{\Oldincludegraphics}{\Oldincludegraphics[width=\ScaleIfNeeded]}}%
-}%
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
 \ifxetex
   \usepackage[setpagesize=false, % page size defined by xetex
               unicode=false, % unicode breaks when used with xetex
@@ -69,8 +62,8 @@
 \fi
 \hypersetup{breaklinks=true,
             bookmarks=true,
-            pdfauthor={},
-            pdftitle={},
+            pdfauthor={David L. Miller},
+            pdftitle={Example dsm analysis: pantropical dolphins in the Gulf of Mexico},
             colorlinks=true,
             citecolor=blue,
             urlcolor=blue,
@@ -82,30 +75,24 @@
 \setlength{\emergencystretch}{3em}  % prevent overfull lines
 \setcounter{secnumdepth}{5}
 
-\author{}
-\date{}
+\title{Example \texttt{dsm} analysis: pantropical dolphins in the Gulf of
+Mexico}
+\author{David L. Miller}
+\date{September 2014}
 
 \begin{document}
+\maketitle
 
-\subsubsection{Spatial models for distance sampling data: recent
-developments and future
-directions}\label{spatial-models-for-distance-sampling-data-recent-developments-and-future-directions}
-
-\section{Appendix A: Example \texttt{dsm}
-analysis}\label{appendix-a-example-dsm-analysis}
-
-\subsubsection{David L. Miller, M. Louise Burt, Eric A. Rexstad and Len
-Thomas.}\label{david-l.-miller-m.-louise-burt-eric-a.-rexstad-and-len-thomas.}
-
-\subsection{Introduction}\label{introduction}
+\section{Introduction}\label{introduction}
 
 The analysis is based on a dataset of observations of pantropical
-dolphins in the Gulf of Mexico (shipped with Distance 6.0). For
-convenience the data are bundled in an \texttt{R}-friendly format,
+dolphins in the Gulf of Mexico (shipped with Distance 6.0 and later).
+For convenience the data are bundled in an \texttt{R}-friendly format,
 although all of the code necessary for creating the data from the
 Distance project files is available at the below URL. The OBIS-SEAMAP
-page for the data may be found at
-\url{http://seamap.env.duke.edu/dataset/25}.
+page for the data may be found at the
+\href{http://seamap.env.duke.edu/dataset/25}{SEFSC GoMex Oceanic 1996}
+survey page.
 
 The intention here is to highlight the features of the \texttt{dsm}
 package, rather than perform a full analysis of the data. For that
@@ -124,7 +111,7 @@ detection function, then a selection of DSMs in section 6. A detection
 function with covariates is fitted in section 7. An example using
 correlation structures is shown in section 8, before concluding.
 
-\subsection{Preamble}\label{preamble}
+\section{Preamble}\label{preamble}
 
 Before we start, we load the \texttt{dsm} package (and its dependencies)
 and set some options:
@@ -138,31 +125,31 @@ and set some options:
 \begin{verbatim}
 ## Loading required package: mgcv
 ## Loading required package: nlme
-## This is mgcv 1.7-29. For overview type 'help("mgcv-package")'.
-## Loading required package: ggplot2
+## This is mgcv 1.8-2. For overview type 'help("mgcv-package")'.
 ## Loading required package: mrds
-## This is mrds 2.1.5
-## Built: R 3.0.2; ; 2014-03-27 14:35:18 UTC; unix
-## Loading required package: statmod
-## This is dsm 2.2.2
-## Built: R 3.0.2; ; 2014-04-16 13:27:10 UTC; unix
+## This is mrds 2.1.10
+## Built: R 3.1.1; ; 2014-09-27 19:42:57 UTC; unix
+## This is dsm 2.2.5
+## Built: R 3.1.1; ; 2014-09-20 04:35:47 UTC; unix
 \end{verbatim}
 
 \begin{Shaded}
 \begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(ggplot2)}
 
 \CommentTok{# plotting options}
-\NormalTok{gg.opts <-}\StringTok{ }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{panel.grid.major =} \KeywordTok{element_blank}\NormalTok{(), }\DataTypeTok{panel.grid.minor =} \KeywordTok{element_blank}\NormalTok{(), }
-    \DataTypeTok{panel.background =} \KeywordTok{element_blank}\NormalTok{())}
+\NormalTok{gg.opts <-}\StringTok{ }\KeywordTok{theme}\NormalTok{(}\DataTypeTok{panel.grid.major=}\KeywordTok{element_blank}\NormalTok{(),}
+                \DataTypeTok{panel.grid.minor=}\KeywordTok{element_blank}\NormalTok{(),}
+                \DataTypeTok{panel.background=}\KeywordTok{element_blank}\NormalTok{())}
 
 \CommentTok{# make the results reproducable}
 \KeywordTok{set.seed}\NormalTok{(}\DecValTok{11123}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\subsection{The data}\label{the-data}
+\section{The data}\label{the-data}
 
-\subsubsection{Observation and segment
+\subsection{Observation and segment
 data}\label{observation-and-segment-data}
 
 All of the data for this analysis has been nicely pre-formatted and is
@@ -261,7 +248,7 @@ transects into segments, and allocate observations to the correct
 segments using a GIS or other similar package, before starting an
 analysis using \texttt{dsm}.
 
-\subsubsection{Converting units}\label{converting-units}
+\subsection{Converting units}\label{converting-units}
 
 It is important to ensure that the measurements to be used in the
 analysis are in compatible units, otherwise the resulting estimates will
@@ -282,10 +269,10 @@ is a simple process:
 \NormalTok{lon0 <-}\StringTok{ }\NormalTok{-}\FloatTok{88.31951}
 \NormalTok{lat0 <-}\StringTok{ }\FloatTok{27.01594}
 
-\NormalTok{sa.tmp <-}\StringTok{ }\KeywordTok{latlong2km}\NormalTok{(survey.area$longitude, survey.area$latitude, }\DataTypeTok{lon0 =} \NormalTok{lon0, }
-    \DataTypeTok{lat0 =} \NormalTok{lat0)}
+\NormalTok{sa.tmp <-}\StringTok{ }\KeywordTok{latlong2km}\NormalTok{(survey.area$longitude, survey.area$latitude,}
+\DataTypeTok{lon0=}\NormalTok{lon0, }\DataTypeTok{lat0=}\NormalTok{lat0)}
 
-\NormalTok{survey.area <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\DataTypeTok{x =} \DecValTok{1000} \NormalTok{*}\StringTok{ }\NormalTok{sa.tmp$km.e, }\DataTypeTok{y =} \DecValTok{1000} \NormalTok{*}\StringTok{ }\NormalTok{sa.tmp$km.n)}
+\NormalTok{survey.area <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\DataTypeTok{x=}\DecValTok{1000}\NormalTok{*sa.tmp$km.e, }\DataTypeTok{y=}\DecValTok{1000}\NormalTok{*sa.tmp$km.n)}
 
 \KeywordTok{rm}\NormalTok{(sa.tmp)}
 \end{Highlighting}
@@ -311,12 +298,12 @@ transect lines overlaid (using data from \texttt{segdata}).
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{p <-}\StringTok{ }\KeywordTok{qplot}\NormalTok{(}\DataTypeTok{data =} \NormalTok{survey.area, }\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{geom =} \StringTok{"polygon"}\NormalTok{, }\DataTypeTok{fill =} \KeywordTok{I}\NormalTok{(}\StringTok{"lightblue"}\NormalTok{), }
-    \DataTypeTok{ylab =} \StringTok{"y"}\NormalTok{, }\DataTypeTok{xlab =} \StringTok{"x"}\NormalTok{, }\DataTypeTok{alpha =} \KeywordTok{I}\NormalTok{(}\FloatTok{0.7}\NormalTok{))}
+\NormalTok{p<-}\KeywordTok{qplot}\NormalTok{(}\DataTypeTok{data=}\NormalTok{survey.area,}\DataTypeTok{x=}\NormalTok{x,}\DataTypeTok{y=}\NormalTok{y,}\DataTypeTok{geom=}\StringTok{"polygon"}\NormalTok{,}\DataTypeTok{fill=}\KeywordTok{I}\NormalTok{(}\StringTok{"lightblue"}\NormalTok{),}
+\DataTypeTok{ylab=}\StringTok{"y"}\NormalTok{, }\DataTypeTok{xlab=}\StringTok{"x"}\NormalTok{, }\DataTypeTok{alpha=}\KeywordTok{I}\NormalTok{(}\FloatTok{0.7}\NormalTok{))}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\NormalTok{gg.opts}
+\NormalTok{p<-p+gg.opts}
 
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_line}\NormalTok{(}\KeywordTok{aes}\NormalTok{(x, y, }\DataTypeTok{group =} \NormalTok{Transect.Label), }\DataTypeTok{data =} \NormalTok{segdata)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_line}\NormalTok{(}\KeywordTok{aes}\NormalTok{(x,y,}\DataTypeTok{group=}\NormalTok{Transect.Label),}\DataTypeTok{data=}\NormalTok{segdata)}
 
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
@@ -324,13 +311,13 @@ transect lines overlaid (using data from \texttt{segdata}).
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/areawithtransects.png}
+\includegraphics{figure/areawithtransects.png}
 \caption{The survey area with transect lines.}
 \end{figure}
 
-\subsection{Exploratory data analysis}\label{exploratory-data-analysis}
+\section{Exploratory data analysis}\label{exploratory-data-analysis}
 
-\subsubsection{Distance data}\label{distance-data}
+\subsection{Distance data}\label{distance-data}
 
 The top panels of Figure 2, below, show histograms of observed distances
 and cluster size, while the bottom panels show the relationship between
@@ -343,37 +330,36 @@ The following code generates Figure 2:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{par}\NormalTok{(}\DataTypeTok{mfrow =} \KeywordTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{, }\DecValTok{2}\NormalTok{))}
+\KeywordTok{par}\NormalTok{(}\DataTypeTok{mfrow=}\KeywordTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{))}
 
 \CommentTok{# histograms}
-\KeywordTok{hist}\NormalTok{(distdata$distance, }\DataTypeTok{main =} \StringTok{""}\NormalTok{, }\DataTypeTok{xlab =} \StringTok{"Distance (m)"}\NormalTok{)}
-\KeywordTok{hist}\NormalTok{(distdata$size, }\DataTypeTok{main =} \StringTok{""}\NormalTok{, }\DataTypeTok{xlab =} \StringTok{"Cluster size"}\NormalTok{)}
+\KeywordTok{hist}\NormalTok{(distdata$distance,}\DataTypeTok{main=}\StringTok{""}\NormalTok{,}\DataTypeTok{xlab=}\StringTok{"Distance (m)"}\NormalTok{)}
+\KeywordTok{hist}\NormalTok{(distdata$size,}\DataTypeTok{main=}\StringTok{""}\NormalTok{,}\DataTypeTok{xlab=}\StringTok{"Cluster size"}\NormalTok{)}
 
 \CommentTok{# plots of distance vs. cluster size}
-\KeywordTok{plot}\NormalTok{(distdata$distance, distdata$size, }\DataTypeTok{main =} \StringTok{""}\NormalTok{, }\DataTypeTok{xlab =} \StringTok{"Distance (m)"}\NormalTok{, }\DataTypeTok{ylab =} \StringTok{"Group size"}\NormalTok{, }
-    \DataTypeTok{pch =} \DecValTok{19}\NormalTok{, }\DataTypeTok{cex =} \FloatTok{0.5}\NormalTok{, }\DataTypeTok{col =} \KeywordTok{rgb}\NormalTok{(}\FloatTok{0.74}\NormalTok{, }\FloatTok{0.74}\NormalTok{, }\FloatTok{0.74}\NormalTok{, }\FloatTok{0.7}\NormalTok{))}
+\KeywordTok{plot}\NormalTok{(distdata$distance, distdata$size, }\DataTypeTok{main=}\StringTok{""}\NormalTok{, }\DataTypeTok{xlab=}\StringTok{"Distance (m)"}\NormalTok{, }
+\DataTypeTok{ylab=}\StringTok{"Group size"}\NormalTok{, }\DataTypeTok{pch=}\DecValTok{19}\NormalTok{, }\DataTypeTok{cex=}\FloatTok{0.5}\NormalTok{, }\DataTypeTok{col=}\KeywordTok{rgb}\NormalTok{(}\FloatTok{0.74}\NormalTok{,}\FloatTok{0.74}\NormalTok{,}\FloatTok{0.74}\NormalTok{,}\FloatTok{0.7}\NormalTok{))}
 
 \CommentTok{# lm fit}
-\NormalTok{l.dat <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\DataTypeTok{distance =} \KeywordTok{seq}\NormalTok{(}\DecValTok{0}\NormalTok{, }\DecValTok{8000}\NormalTok{, }\DataTypeTok{len =} \DecValTok{1000}\NormalTok{))}
-\NormalTok{lo <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(size ~}\StringTok{ }\NormalTok{distance, }\DataTypeTok{data =} \NormalTok{distdata)}
-\KeywordTok{lines}\NormalTok{(l.dat$distance, }\KeywordTok{as.vector}\NormalTok{(}\KeywordTok{predict}\NormalTok{(lo, l.dat)))}
+\NormalTok{l.dat<-}\KeywordTok{data.frame}\NormalTok{(}\DataTypeTok{distance=}\KeywordTok{seq}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{8000}\NormalTok{,}\DataTypeTok{len=}\DecValTok{1000}\NormalTok{))}
+\NormalTok{lo<-}\KeywordTok{lm}\NormalTok{(size~distance, }\DataTypeTok{data=}\NormalTok{distdata)}
+\KeywordTok{lines}\NormalTok{(l.dat$distance, }\KeywordTok{as.vector}\NormalTok{(}\KeywordTok{predict}\NormalTok{(lo,l.dat)))}
 
-\KeywordTok{plot}\NormalTok{(distdata$distance, distdata$beaufort, }\DataTypeTok{main =} \StringTok{""}\NormalTok{, }\DataTypeTok{xlab =} \StringTok{"Distance (m)"}\NormalTok{, }
-    \DataTypeTok{ylab =} \StringTok{"Beaufort sea state"}\NormalTok{, }\DataTypeTok{pch =} \DecValTok{19}\NormalTok{, }\DataTypeTok{cex =} \FloatTok{0.5}\NormalTok{, }\DataTypeTok{col =} \KeywordTok{rgb}\NormalTok{(}\FloatTok{0.74}\NormalTok{, }\FloatTok{0.74}\NormalTok{, }
-        \FloatTok{0.74}\NormalTok{, }\FloatTok{0.7}\NormalTok{))}
+\KeywordTok{plot}\NormalTok{(distdata$distance,distdata$beaufort, }\DataTypeTok{main=}\StringTok{""}\NormalTok{, }\DataTypeTok{xlab=}\StringTok{"Distance (m)"}\NormalTok{,}
+\DataTypeTok{ylab=}\StringTok{"Beaufort sea state"}\NormalTok{, }\DataTypeTok{pch=}\DecValTok{19}\NormalTok{, }\DataTypeTok{cex=}\FloatTok{0.5}\NormalTok{, }\DataTypeTok{col=}\KeywordTok{rgb}\NormalTok{(}\FloatTok{0.74}\NormalTok{,}\FloatTok{0.74}\NormalTok{,}\FloatTok{0.74}\NormalTok{,}\FloatTok{0.7}\NormalTok{))}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/EDA-plots.png}
+\includegraphics{figure/EDA-plots.png}
 \caption{Exploratory plot of the distance sampling data. Top row, left
 to right: histograms of distance and cluster size; bottom row: plot of
 distance against cluster size and plot of distances against Beaufort sea
 state.}
 \end{figure}
 
-\subsubsection{Spatial data}\label{spatial-data}
+\subsection{Spatial data}\label{spatial-data}
 
 Looking separately at the spatial data without thinking about the
 distances, we can see the distribution of group size in space in Figure
@@ -392,24 +378,23 @@ The following code generates Figure 3:
 \NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(preddata)}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\NormalTok{gg.opts}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill =} \StringTok{"Depth"}\NormalTok{, }\DataTypeTok{x =} \StringTok{"x"}\NormalTok{, }\DataTypeTok{y =} \StringTok{"y"}\NormalTok{, }\DataTypeTok{size =} \StringTok{"Group size"}\NormalTok{)}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{fill =} \NormalTok{depth, }\DataTypeTok{width =} \NormalTok{width, }\DataTypeTok{height =} \NormalTok{height))}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_line}\NormalTok{(}\KeywordTok{aes}\NormalTok{(x, y, }\DataTypeTok{group =} \NormalTok{Transect.Label), }\DataTypeTok{data =} \NormalTok{segdata)}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_point}\NormalTok{(}\KeywordTok{aes}\NormalTok{(x, y, }\DataTypeTok{size =} \NormalTok{size), }\DataTypeTok{data =} \NormalTok{distdata, }\DataTypeTok{colour =} \StringTok{"red"}\NormalTok{, }
-    \DataTypeTok{alpha =} \KeywordTok{I}\NormalTok{(}\FloatTok{0.7}\NormalTok{))}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill=}\StringTok{"Depth"}\NormalTok{,}\DataTypeTok{x=}\StringTok{"x"}\NormalTok{,}\DataTypeTok{y=}\StringTok{"y"}\NormalTok{,}\DataTypeTok{size=}\StringTok{"Group size"}\NormalTok{)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x,}\DataTypeTok{y=}\NormalTok{y,}\DataTypeTok{fill=}\NormalTok{depth, }\DataTypeTok{width =} \NormalTok{width, }\DataTypeTok{height =} \NormalTok{height))}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_line}\NormalTok{(}\KeywordTok{aes}\NormalTok{(x, y, }\DataTypeTok{group=}\NormalTok{Transect.Label),}\DataTypeTok{data=}\NormalTok{segdata)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_point}\NormalTok{(}\KeywordTok{aes}\NormalTok{(x, y, }\DataTypeTok{size=}\NormalTok{size), }\DataTypeTok{data=}\NormalTok{distdata, }\DataTypeTok{colour=}\StringTok{"red"}\NormalTok{,}\DataTypeTok{alpha=}\KeywordTok{I}\NormalTok{(}\FloatTok{0.7}\NormalTok{))}
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/unnamed-chunk-4.png}
+\includegraphics{figure/unnamed-chunk-4.png}
 \caption{Plot of depth values over the survey area with transects and
 observations overlaid. Point size is proportional to the group size for
 each observation.}
 \end{figure}
 
-\subsection{Estimating the detection
+\section{Estimating the detection
 function}\label{estimating-the-detection-function}
 
 We use the \texttt{ds} function in the package \texttt{Distance} to fit
@@ -426,27 +411,12 @@ First, loading the \texttt{Distance} library:
 \end{Highlighting}
 \end{Shaded}
 
-\begin{verbatim}
-## Loading required package: optimx
-## Loading required package: numDeriv
-## 
-## Attaching package: 'optimx'
-## 
-## The following object is masked from 'package:nlme':
-## 
-##     coef<-
-## 
-## Loading required package: Rsolnp
-## Loading required package: truncnorm
-## Loading required package: parallel
-\end{verbatim}
-
 We can then fit a detection function with hazard-rate key with no
 adjustment terms:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{hr.model <-}\StringTok{ }\KeywordTok{ds}\NormalTok{(distdata, }\KeywordTok{max}\NormalTok{(distdata$distance), }\DataTypeTok{key =} \StringTok{"hr"}\NormalTok{, }\DataTypeTok{adjustment =} \OtherTok{NULL}\NormalTok{)}
+\NormalTok{hr.model<-}\KeywordTok{ds}\NormalTok{(distdata,}\KeywordTok{max}\NormalTok{(distdata$distance),}\DataTypeTok{key=}\StringTok{"hr"}\NormalTok{,}\DataTypeTok{adjustment=}\OtherTok{NULL}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -482,7 +452,7 @@ adjustment terms:
 ## 
 ##                     Estimate      SE     CV
 ## Average p             0.5913  0.2224 0.3762
-## N in covered region  79.4879 30.8073 0.3876
+## N in covered region  79.4880 30.8059 0.3876
 \end{verbatim}
 
 The following code generates a plot of the fitted detection function
@@ -496,7 +466,7 @@ The following code generates a plot of the fitted detection function
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/hr-detfct.png}
+\includegraphics{figure/hr-detfct.png}
 \caption{Plot of the fitted detection function.}
 \end{figure}
 
@@ -506,14 +476,14 @@ function. Later in this document, we demonstrate fitting of a detection
 function with size as a covariate, but for now we stick to a simple
 model.
 
-\subsection{Fitting a DSM}\label{fitting-a-dsm}
+\section{Fitting a DSM}\label{fitting-a-dsm}
 
 Before fitting a \texttt{dsm} model, the data must be segmented; this
 consists of chopping up the transects and attributing counts to each of
 the segments. As mentioned above, these data have already been
 segmented.
 
-\subsubsection{A simple model}\label{a-simple-model}
+\subsection{A simple model}\label{a-simple-model}
 
 We begin with a very simple model. We assume that the number of
 individuals in each segment are quasi-Poisson distributed and that they
@@ -527,7 +497,7 @@ Running the model:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod1 <-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N ~}\StringTok{ }\KeywordTok{s}\NormalTok{(x, y), hr.model$ddf, segdata, obsdata)}
+\NormalTok{mod1<-}\KeywordTok{dsm}\NormalTok{(N~}\KeywordTok{s}\NormalTok{(x,y), hr.model$ddf, segdata, obsdata)}
 \KeywordTok{summary}\NormalTok{(mod1)}
 \end{Highlighting}
 \end{Shaded}
@@ -539,31 +509,31 @@ Running the model:
 ## 
 ## Formula:
 ## N ~ s(x, y) + offset(off.set)
-## <environment: 0x1053470b0>
+## <environment: 0x7fda491078e8>
 ## 
 ## Parametric coefficients:
 ##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)  -18.409      0.394   -46.7   <2e-16 ***
+## (Intercept)  -18.409      0.528   -34.8   <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Approximate significance of smooth terms:
 ##         edf Ref.df    F p-value    
-## s(x,y) 26.1   28.2 5.61  <2e-16 ***
+## s(x,y) 26.1   28.2 3.12 3.7e-07 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## R-sq.(adj) =  0.113   Deviance explained =   44%
-## GCV score = 42.985  Scale est. = 37.611    n = 387
+## GCV = 42.985  Scale est. = 67.549    n = 387
 \end{verbatim}
 
 We can then make the predictions over the the grid and calculate
 abundance. First we must create the offset (the area of each grid cell,
-which is 444km$^2$).
+which is 444km\(^2\)).
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{off.set <-}\StringTok{ }\DecValTok{444} \NormalTok{*}\StringTok{ }\DecValTok{1000} \NormalTok{*}\StringTok{ }\DecValTok{1000}
+\NormalTok{off.set <-}\StringTok{ }\DecValTok{444}\NormalTok{*}\DecValTok{1000}\NormalTok{*}\DecValTok{1000}
 \NormalTok{mod1.pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(mod1, preddata, off.set)}
 \end{Highlighting}
 \end{Shaded}
@@ -573,19 +543,19 @@ bind on the predicitons to the data used to create them:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata, mod1.pred)}
-\NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(pp) +}\StringTok{ }\NormalTok{gg.opts}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{fill =} \NormalTok{mod1.pred, }\DataTypeTok{width =} \NormalTok{width, }\DataTypeTok{height =} \NormalTok{height))}
+\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata,mod1.pred)}
+\NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(pp)+gg.opts}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x,}\DataTypeTok{y=}\NormalTok{y,}\DataTypeTok{fill=}\NormalTok{mod1.pred,}\DataTypeTok{width=}\NormalTok{width,}\DataTypeTok{height=}\NormalTok{height))}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y), }\DataTypeTok{data =} \NormalTok{survey.area)}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill =} \StringTok{"Abundance"}\NormalTok{)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x, }\DataTypeTok{y=}\NormalTok{y),}\DataTypeTok{data=}\NormalTok{survey.area)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill=}\StringTok{"Abundance"}\NormalTok{)}
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/mod1-preds.png}
+\includegraphics{figure/mod1-preds.png}
 \caption{Predicted density surface for \texttt{mod1}.}
 \end{figure}
 
@@ -613,7 +583,7 @@ following code:.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/mod1-check.png}
+\includegraphics{figure/mod1-check.png}
 \caption{Diagnostic plots for \texttt{mod1}.}
 \end{figure}
 
@@ -621,9 +591,10 @@ following code:.
 ## 
 ## Method: GCV   Optimizer: outer newton
 ## full convergence after 4 iterations.
-## Gradient range [4.281e-07,4.281e-07]
-## (score 42.99 & scale 37.61).
+## Gradient range [4.245e-07,4.245e-07]
+## (score 42.99 & scale 67.55).
 ## Hessian positive definite, eigenvalue range [0.4516,0.4516].
+## Model rank =  30 / 30 
 ## 
 ## Basis dimension (k) checking results. Low p-value (k-index<1) may
 ## indicate that k is too low, especially if edf is close to k'.
@@ -641,7 +612,7 @@ function:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{dsm.cor}\NormalTok{(mod1, }\DataTypeTok{max.lag =} \DecValTok{10}\NormalTok{, }\DataTypeTok{Segment.Label =} \StringTok{"Sample.Label"}\NormalTok{)}
+\KeywordTok{dsm.cor}\NormalTok{(mod1,}\DataTypeTok{max.lag=}\DecValTok{10}\NormalTok{,}\DataTypeTok{Segment.Label=}\StringTok{"Sample.Label"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -654,9 +625,10 @@ we have no covariates in the detection function.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{preddata.varprop <-}\StringTok{ }\KeywordTok{split}\NormalTok{(preddata, }\DecValTok{1}\NormalTok{:}\KeywordTok{nrow}\NormalTok{(preddata))}
-\NormalTok{offset.varprop <-}\StringTok{ }\KeywordTok{as.list}\NormalTok{(}\KeywordTok{rep}\NormalTok{(off.set, }\KeywordTok{nrow}\NormalTok{(preddata)))}
-\NormalTok{mod1.varprop <-}\StringTok{ }\KeywordTok{dsm.var.prop}\NormalTok{(mod1, }\DataTypeTok{pred.data =} \NormalTok{preddata.varprop, }\DataTypeTok{off.set =} \NormalTok{offset.varprop)}
+\NormalTok{preddata.varprop <-}\StringTok{ }\KeywordTok{split}\NormalTok{(preddata,}\DecValTok{1}\NormalTok{:}\KeywordTok{nrow}\NormalTok{(preddata))}
+\NormalTok{offset.varprop <-}\StringTok{ }\KeywordTok{as.list}\NormalTok{(}\KeywordTok{rep}\NormalTok{(off.set,}\KeywordTok{nrow}\NormalTok{(preddata)))}
+\NormalTok{mod1.varprop <-}\StringTok{ }\KeywordTok{dsm.var.prop}\NormalTok{(mod1, }\DataTypeTok{pred.data=}\NormalTok{preddata.varprop,}
+\DataTypeTok{off.set=}\NormalTok{offset.varprop)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -675,16 +647,16 @@ estimation:
 ## 
 ## Quantiles of differences between fitted model and variance model
 ##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-## -1.56e-12 -5.00e-16  1.08e-14  5.25e-14  9.17e-14  1.99e-12 
+## -4.79e-12 -4.80e-14  2.00e-15  7.00e-15  9.80e-14  1.69e-12 
 ## 
 ## Approximate asymptotic confidence interval:
 ##    5%  Mean   95% 
-## 29962 47034 73832 
+## 25860 47034 85546 
 ## (Using delta method)
 ## 
 ## Point estimate                 : 47034 
-## Standard error                 : 10966 
-## Coefficient of variation       : 0.2331
+## Standard error                 : 14695 
+## Coefficient of variation       : 0.3124
 \end{verbatim}
 
 The section titled
@@ -697,7 +669,7 @@ Figure 8).
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{p <-}\StringTok{ }\KeywordTok{plot}\NormalTok{(mod1.varprop, }\DataTypeTok{xlab =} \StringTok{"Easting"}\NormalTok{, }\DataTypeTok{ylab =} \StringTok{"Northing"}\NormalTok{, }\DataTypeTok{plot =} \OtherTok{FALSE}\NormalTok{)}
+\NormalTok{p <-}\StringTok{ }\KeywordTok{plot}\NormalTok{(mod1.varprop,}\DataTypeTok{xlab=}\StringTok{"Easting"}\NormalTok{,}\DataTypeTok{ylab=}\StringTok{"Northing"}\NormalTok{,}\DataTypeTok{plot=}\OtherTok{FALSE}\NormalTok{)}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
@@ -705,12 +677,12 @@ Figure 8).
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/unnamed-chunk-12.png}
+\includegraphics{figure/unnamed-chunk-12.png}
 \caption{Plot of the coefficient of variation for the study area with
 transect lines and observations overlaid.}
 \end{figure}
 
-\subsubsection{Adding another covariate to the spatial
+\subsection{Adding another covariate to the spatial
 model}\label{adding-another-covariate-to-the-spatial-model}
 
 The data set also contains a \texttt{depth} covariate (which we plotted
@@ -718,8 +690,7 @@ above). We can include in the model very simply:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod2 <-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N ~}\StringTok{ }\KeywordTok{s}\NormalTok{(x, y, }\DataTypeTok{k =} \DecValTok{10}\NormalTok{) +}\StringTok{ }\KeywordTok{s}\NormalTok{(depth, }\DataTypeTok{k =} \DecValTok{20}\NormalTok{), hr.model, segdata, obsdata, }
-    \DataTypeTok{select =} \OtherTok{TRUE}\NormalTok{)}
+\NormalTok{mod2 <-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N~}\KeywordTok{s}\NormalTok{(x,y,}\DataTypeTok{k=}\DecValTok{10}\NormalTok{)+}\KeywordTok{s}\NormalTok{(depth,}\DataTypeTok{k=}\DecValTok{20}\NormalTok{), hr.model, segdata, obsdata, }\DataTypeTok{select=}\OtherTok{TRUE}\NormalTok{)}
 \KeywordTok{summary}\NormalTok{(mod2)}
 \end{Highlighting}
 \end{Shaded}
@@ -731,23 +702,23 @@ above). We can include in the model very simply:
 ## 
 ## Formula:
 ## N ~ s(x, y, k = 10) + s(depth, k = 20) + offset(off.set)
-## <environment: 0x104d76358>
+## <environment: 0x7fda48e24980>
 ## 
 ## Parametric coefficients:
 ##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)  -18.823      0.734   -25.6   <2e-16 ***
+## (Intercept)  -18.823      0.949   -19.8   <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Approximate significance of smooth terms:
 ##            edf Ref.df    F p-value    
-## s(x,y)    3.88      9 2.06 0.00018 ***
-## s(depth) 10.52     19 3.15 9.9e-10 ***
+## s(x,y)    3.88      9 1.23   0.011 *  
+## s(depth) 10.52     19 1.88 4.1e-05 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## R-sq.(adj) =  0.0929   Deviance explained =   34%
-## GCV score =  46.27  Scale est. = 42.967    n = 387
+## GCV =  46.27  Scale est. = 71.886    n = 387
 \end{verbatim}
 
 By setting the \texttt{k} parameter we specify the largest complexity
@@ -762,7 +733,7 @@ Setting \texttt{select=TRUE} here imposes extra shrinkage terms on each
 smooth in the model (allowing smooth terms to be removed from the model
 during fitting; see \texttt{?gam} for more information). Although this
 is not particularly useful here, this can be a good way (along with
-looking at $p$-values) to perform term selection.
+looking at \(p\)-values) to perform term selection.
 
 Again we can plot the predictions from this model (Figure 9, code
 below).
@@ -770,19 +741,19 @@ below).
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{mod2.pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(mod2, preddata, off.set)}
-\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata, mod2.pred)}
+\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata,mod2.pred)}
 \NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(pp) +}\StringTok{ }\NormalTok{gg.opts}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill =} \StringTok{"Abundance"}\NormalTok{)}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{fill =} \NormalTok{mod2.pred, }\DataTypeTok{width =} \NormalTok{width, }\DataTypeTok{height =} \NormalTok{height))}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill=}\StringTok{"Abundance"}\NormalTok{)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x,}\DataTypeTok{y=}\NormalTok{y,}\DataTypeTok{fill=}\NormalTok{mod2.pred,}\DataTypeTok{width=}\NormalTok{width,}\DataTypeTok{height=}\NormalTok{height))}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y), }\DataTypeTok{data =} \NormalTok{survey.area)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x, }\DataTypeTok{y=}\NormalTok{y),}\DataTypeTok{data=}\NormalTok{survey.area)}
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/mod2-preds.png}
+\includegraphics{figure/mod2-preds.png}
 \caption{Predicted density surface for \texttt{mod2}.}
 \end{figure}
 
@@ -791,22 +762,17 @@ the relationship between depth and abundance (shown in Figure 10):
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{plot}\NormalTok{(mod2, }\DataTypeTok{select =} \DecValTok{2}\NormalTok{)}
+\KeywordTok{plot}\NormalTok{(mod2, }\DataTypeTok{select=}\DecValTok{2}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics{mexico-figs/mod2-depth.png}
-\caption{Plot of the smooth of depth in \texttt{mod2}.}
-\end{figure}
+\includegraphics{figure/mod2-depth.png} Omitting the argument
+\texttt{select} in the call to \texttt{plot} gives plots of all the
+smooth terms, one at a time.
 
-Omitting the argument \texttt{select} in the call to \texttt{plot} gives
-plots of all the smooth terms, one at a time.
+\subsection{A more complicated model}\label{a-more-complicated-model}
 
-\subsubsection{A more complicated model}\label{a-more-complicated-model}
-
-\textbf{\emph{Tweedie}}
+\subsubsection{Tweedie}\label{tweedie}
 
 Response distributions other than the quasi-Poisson can be used, for
 example the Tweedie distribution. If the Tweedie is used, then the
@@ -817,7 +783,8 @@ example we only show the difference between two values for \texttt{p}.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod3}\FloatTok{.12} \NormalTok{<-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N ~}\StringTok{ }\KeywordTok{s}\NormalTok{(x, y), hr.model, segdata, obsdata, }\DataTypeTok{family =} \KeywordTok{Tweedie}\NormalTok{(}\DataTypeTok{p =} \FloatTok{1.2}\NormalTok{))}
+\NormalTok{mod3}\FloatTok{.12} \NormalTok{<-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N~}\KeywordTok{s}\NormalTok{(x,y), hr.model, segdata, obsdata,}
+            \DataTypeTok{family=}\KeywordTok{Tweedie}\NormalTok{(}\DataTypeTok{p=}\FloatTok{1.2}\NormalTok{))}
 \KeywordTok{summary}\NormalTok{(mod3}\FloatTok{.12}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
@@ -829,22 +796,22 @@ example we only show the difference between two values for \texttt{p}.
 ## 
 ## Formula:
 ## N ~ s(x, y) + offset(off.set)
-## <environment: 0x10cc83d90>
+## <environment: 0x7fda488fdcb0>
 ## 
 ## Parametric coefficients:
 ##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)  -18.981      0.405   -46.9   <2e-16 ***
+## (Intercept)   -18.98       0.53   -35.8   <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Approximate significance of smooth terms:
 ##         edf Ref.df    F p-value    
-## s(x,y) 27.3   28.7 6.27  <2e-16 ***
+## s(x,y) 27.3   28.7 3.67 2.9e-09 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## R-sq.(adj) =  0.0531   Deviance explained = 47.9%
-## GCV score = 23.284  Scale est. = 20.239    n = 387
+## GCV = 23.284  Scale est. = 34.639    n = 387
 \end{verbatim}
 
 As well as looking at the GCV/UBRE/REML score of the model to assess the
@@ -856,7 +823,8 @@ where as setting \texttt{p=1.7}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod3}\FloatTok{.17} \NormalTok{<-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N ~}\StringTok{ }\KeywordTok{s}\NormalTok{(x, y), hr.model, segdata, obsdata, }\DataTypeTok{family =} \KeywordTok{Tweedie}\NormalTok{(}\DataTypeTok{p =} \FloatTok{1.7}\NormalTok{))}
+\NormalTok{mod3}\FloatTok{.17} \NormalTok{<-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N~}\KeywordTok{s}\NormalTok{(x,y), hr.model, segdata, obsdata,}
+            \DataTypeTok{family=}\KeywordTok{Tweedie}\NormalTok{(}\DataTypeTok{p=}\FloatTok{1.7}\NormalTok{))}
 \KeywordTok{summary}\NormalTok{(mod3}\FloatTok{.17}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
@@ -868,22 +836,22 @@ where as setting \texttt{p=1.7}:
 ## 
 ## Formula:
 ## N ~ s(x, y) + offset(off.set)
-## <environment: 0x10d317948>
+## <environment: 0x7fda4afba860>
 ## 
 ## Parametric coefficients:
 ##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)  -24.267      0.671   -36.2   <2e-16 ***
+## (Intercept)  -24.267      0.706   -34.4   <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Approximate significance of smooth terms:
-##         edf Ref.df    F p-value    
-## s(x,y) 28.8     29 14.4  <2e-16 ***
+##         edf Ref.df  F p-value    
+## s(x,y) 28.8     29 13  <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## R-sq.(adj) =  -9.81   Deviance explained = 53.4%
-## GCV score = 9.3865  Scale est. = 8.0932    n = 387
+## GCV = 9.3865  Scale est. = 8.9716    n = 387
 \end{verbatim}
 
 The plot (Figure 11, right panel; code below), appears to be much
@@ -891,30 +859,24 @@ flatter.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{par}\NormalTok{(}\DataTypeTok{mfrow =} \KeywordTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{2}\NormalTok{))}
-\KeywordTok{plot}\NormalTok{(}\KeywordTok{sqrt}\NormalTok{(}\KeywordTok{abs}\NormalTok{(}\KeywordTok{residuals}\NormalTok{(mod3}\FloatTok{.12}\NormalTok{))), }\KeywordTok{predict}\NormalTok{(mod3}\FloatTok{.12}\NormalTok{), }\DataTypeTok{xlab =} \StringTok{"Square root of the}\CharTok{\textbackslash{}n}\StringTok{absolute value of the residuals"}\NormalTok{, }
-    \DataTypeTok{ylab =} \StringTok{"Fitted values"}\NormalTok{, }\DataTypeTok{main =} \StringTok{"p=1.2"}\NormalTok{)}
-\KeywordTok{plot}\NormalTok{(}\KeywordTok{sqrt}\NormalTok{(}\KeywordTok{abs}\NormalTok{(}\KeywordTok{residuals}\NormalTok{(mod3}\FloatTok{.17}\NormalTok{))), }\KeywordTok{predict}\NormalTok{(mod3}\FloatTok{.17}\NormalTok{), }\DataTypeTok{xlab =} \StringTok{"Square root of the}\CharTok{\textbackslash{}n}\StringTok{absolute value of the residuals"}\NormalTok{, }
-    \DataTypeTok{ylab =} \StringTok{"Fitted values"}\NormalTok{, }\DataTypeTok{main =} \StringTok{"p=1.7"}\NormalTok{)}
+\KeywordTok{par}\NormalTok{(}\DataTypeTok{mfrow=}\KeywordTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{))}
+\KeywordTok{plot}\NormalTok{(}\KeywordTok{sqrt}\NormalTok{(}\KeywordTok{abs}\NormalTok{(}\KeywordTok{residuals}\NormalTok{(mod3}\FloatTok{.12}\NormalTok{))),}\KeywordTok{predict}\NormalTok{(mod3}\FloatTok{.12}\NormalTok{),}
+\DataTypeTok{xlab=}\StringTok{"Square root of the}\CharTok{\textbackslash{}n}\StringTok{absolute value of the residuals"}\NormalTok{,}
+\DataTypeTok{ylab=}\StringTok{"Fitted values"}\NormalTok{,}\DataTypeTok{main=}\StringTok{"p=1.2"}\NormalTok{)}
+\KeywordTok{plot}\NormalTok{(}\KeywordTok{sqrt}\NormalTok{(}\KeywordTok{abs}\NormalTok{(}\KeywordTok{residuals}\NormalTok{(mod3}\FloatTok{.17}\NormalTok{))),}\KeywordTok{predict}\NormalTok{(mod3}\FloatTok{.17}\NormalTok{),}
+\DataTypeTok{xlab=}\StringTok{"Square root of the}\CharTok{\textbackslash{}n}\StringTok{absolute value of the residuals"}\NormalTok{,}
+\DataTypeTok{ylab=}\StringTok{"Fitted values"}\NormalTok{,}\DataTypeTok{main=}\StringTok{"p=1.7"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics{mexico-figs/tweedie-17-residplot.png}
-\caption{Plot of absolute value of the residuals versus the fitted
-values for the Tweedie model when \texttt{p=1.2} (left) and
-\texttt{p=1.7} (right). Note that the right plot is much flatter than
-the left.}
-\end{figure}
-
-Note also the improvement in GCV score.
+\includegraphics{figure/tweedie-17-residplot.png} Note also the
+improvement in GCV score.
 
 In general, a ``good'' value can be found by simply plotting the above
 along with the GCV score for the model for values of \texttt{p} between
 1.1 and 1.9 and looking for the best GCV and ``flattest'' plot.
 
-\textbf{\emph{Soap film smoothing}}
+\subsubsection{Soap film smoothing}\label{soap-film-smoothing}
 
 To account for a complex region (e.g., a region that includes
 peninsulae) we can use the soap film smoother (Wood et al. 2008).
@@ -925,9 +887,9 @@ the \texttt{make.soapgrid()} function in \texttt{dsm}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{soap.knots <-}\StringTok{ }\KeywordTok{make.soapgrid}\NormalTok{(survey.area, }\KeywordTok{c}\NormalTok{(}\DecValTok{11}\NormalTok{, }\DecValTok{6}\NormalTok{))}
+\NormalTok{soap.knots <-}\StringTok{ }\KeywordTok{make.soapgrid}\NormalTok{(survey.area,}\KeywordTok{c}\NormalTok{(}\DecValTok{11}\NormalTok{,}\DecValTok{6}\NormalTok{))}
 \CommentTok{# knot 11 is not outside but is too close according to soap...}
-\NormalTok{soap.knots <-}\StringTok{ }\NormalTok{soap.knots[-}\DecValTok{11}\NormalTok{, ]}
+\NormalTok{soap.knots <-}\StringTok{ }\NormalTok{soap.knots[-}\DecValTok{11}\NormalTok{,]}
 \end{Highlighting}
 \end{Shaded}
 
@@ -941,11 +903,10 @@ fail, so we remove them:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{x <-}\StringTok{ }\NormalTok{segdata$x}
-\NormalTok{y <-}\StringTok{ }\NormalTok{segdata$y}
-\NormalTok{onoff <-}\StringTok{ }\KeywordTok{inSide}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{bnd =} \KeywordTok{as.list}\NormalTok{(survey.area))}
-\KeywordTok{rm}\NormalTok{(x, y)}
-\NormalTok{segdata.soap <-}\StringTok{ }\NormalTok{segdata[onoff, ]}
+\NormalTok{x <-}\StringTok{ }\NormalTok{segdata$x; y<-segdata$y}
+\NormalTok{onoff <-}\StringTok{ }\KeywordTok{inSide}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x,}\DataTypeTok{y=}\NormalTok{y, }\DataTypeTok{bnd=}\KeywordTok{as.list}\NormalTok{(survey.area))}
+\KeywordTok{rm}\NormalTok{(x,y)}
+\NormalTok{segdata.soap <-}\StringTok{ }\NormalTok{segdata[onoff,]}
 \end{Highlighting}
 \end{Shaded}
 
@@ -957,8 +918,9 @@ complexity of the film is controlled by the knots given in the
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod4 <-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N ~}\StringTok{ }\KeywordTok{s}\NormalTok{(x, y, }\DataTypeTok{bs =} \StringTok{"so"}\NormalTok{, }\DataTypeTok{k =} \DecValTok{10}\NormalTok{, }\DataTypeTok{xt =} \KeywordTok{list}\NormalTok{(}\DataTypeTok{bnd =} \KeywordTok{list}\NormalTok{(survey.area))) +}\StringTok{ }
-\StringTok{    }\KeywordTok{s}\NormalTok{(depth), hr.model, segdata.soap, obsdata, }\DataTypeTok{knots =} \NormalTok{soap.knots)}
+\NormalTok{mod4<-}\KeywordTok{dsm}\NormalTok{(N~}\KeywordTok{s}\NormalTok{(x,y, }\DataTypeTok{bs=}\StringTok{"so"}\NormalTok{,}\DataTypeTok{k=}\DecValTok{10}\NormalTok{,}\DataTypeTok{xt=}\KeywordTok{list}\NormalTok{(}\DataTypeTok{bnd=}\KeywordTok{list}\NormalTok{(survey.area)))}
+\NormalTok{+}\KeywordTok{s}\NormalTok{(depth),}
+\NormalTok{hr.model, segdata.soap, obsdata, }\DataTypeTok{knots=}\NormalTok{soap.knots)}
 \KeywordTok{summary}\NormalTok{(mod4)}
 \end{Highlighting}
 \end{Shaded}
@@ -971,23 +933,23 @@ complexity of the film is controlled by the knots given in the
 ## Formula:
 ## N ~ s(x, y, bs = "so", k = 10, xt = list(bnd = list(survey.area))) + 
 ##     s(depth) + offset(off.set)
-## <environment: 0x10b22b5f8>
+## <environment: 0x7fda49733640>
 ## 
 ## Parametric coefficients:
 ##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)   -19.40       0.62   -31.3   <2e-16 ***
+## (Intercept)  -18.216      0.613   -29.7   <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Approximate significance of smooth terms:
-##            edf Ref.df    F p-value    
-## s(x,y)   23.05  29.00 2.63   2e-07 ***
-## s(depth)  7.08   7.89 2.57    0.01 *  
+##            edf Ref.df    F p-value   
+## s(x,y)   10.75  29.00 0.86  0.0032 **
+## s(depth)  6.47   7.41 1.95  0.0579 . 
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## R-sq.(adj) =  0.183   Deviance explained = 45.9%
-## GCV score = 45.227  Scale est. = 38.341    n = 365
+## R-sq.(adj) =  0.122   Deviance explained = 35.3%
+## GCV = 48.484  Scale est. = 76.941    n = 365
 \end{verbatim}
 
 Comparing predictions from the model that included a smooth of depth,
@@ -995,25 +957,25 @@ predictions are shown in Figure 12 (figure created with the code below).
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod4.pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(mod4, preddata, off.set)}
-\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata, mod4.pred)}
+\NormalTok{mod4.pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(mod4,preddata, off.set)}
+\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata,mod4.pred)}
 
 \NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(pp) +}\StringTok{ }\NormalTok{gg.opts}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{fill =} \NormalTok{mod4.pred, }\DataTypeTok{width =} \NormalTok{width, }\DataTypeTok{height =} \NormalTok{height))}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x,}\DataTypeTok{y=}\NormalTok{y,}\DataTypeTok{fill=}\NormalTok{mod4.pred,}\DataTypeTok{width=}\NormalTok{width,}\DataTypeTok{height=}\NormalTok{height))}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y), }\DataTypeTok{data =} \NormalTok{survey.area)}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill =} \StringTok{"Abundance"}\NormalTok{)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x, }\DataTypeTok{y=}\NormalTok{y),}\DataTypeTok{data=}\NormalTok{survey.area)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill=}\StringTok{"Abundance"}\NormalTok{)}
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/mod4-pred.png}
+\includegraphics{figure/mod4-pred.png}
 \caption{Predicted density surface for \texttt{mod4}.}
 \end{figure}
 
-\subsection{Adding covariates to the detection
+\section{Adding covariates to the detection
 function}\label{adding-covariates-to-the-detection-function}
 
 It is common to include covariates in the detection function (so-called
@@ -1024,8 +986,9 @@ functions with the sea state included as a factor covariate as follows:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{hr.beau.model <-}\StringTok{ }\KeywordTok{ds}\NormalTok{(distdata, }\KeywordTok{max}\NormalTok{(distdata$distance), }\DataTypeTok{formula =} \NormalTok{~}\KeywordTok{as.factor}\NormalTok{(beaufort), }
-    \DataTypeTok{key =} \StringTok{"hr"}\NormalTok{, }\DataTypeTok{adjustment =} \OtherTok{NULL}\NormalTok{)}
+\NormalTok{hr.beau.model<-}\KeywordTok{ds}\NormalTok{(distdata,}\KeywordTok{max}\NormalTok{(distdata$distance),}
+\DataTypeTok{formula=}\NormalTok{~}\KeywordTok{as.factor}\NormalTok{(beaufort),}
+\DataTypeTok{key=}\StringTok{"hr"}\NormalTok{, }\DataTypeTok{adjustment=}\OtherTok{NULL}\NormalTok{)}
 \KeywordTok{summary}\NormalTok{(hr.beau.model)}
 \end{Highlighting}
 \end{Shaded}
@@ -1042,19 +1005,19 @@ functions with the sea state included as a factor covariate as follows:
 ## Detection function parameters
 ## Scale Coefficients:  
 ##                      estimate     se
-## (Intercept)           7.66318  1.077
-## as.factor(beaufort)2  2.27968 17.367
-## as.factor(beaufort)3  0.28606  1.019
-## as.factor(beaufort)4  0.07174  1.223
-## as.factor(beaufort)5 -0.36399  1.537
+## (Intercept)           7.66298  1.078
+## as.factor(beaufort)2  2.29681 18.874
+## as.factor(beaufort)3  0.28647  1.020
+## as.factor(beaufort)4  0.07159  1.224
+## as.factor(beaufort)5 -0.36392  1.539
 ## 
 ## Shape parameters:  
-##             estimate    se
-## (Intercept)   0.3004 0.518
+##             estimate     se
+## (Intercept)   0.2999 0.5183
 ## 
 ##                     Estimate      SE     CV
-## Average p             0.5421  0.1751 0.3229
-## N in covered region  86.6957 29.4133 0.3393
+## Average p             0.5422  0.1752 0.3231
+## N in covered region  86.6846 29.4247 0.3394
 \end{verbatim}
 
 In this example, the detection function with covariates does not give a
@@ -1071,7 +1034,7 @@ model object:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod5 <-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(Nhat ~}\StringTok{ }\KeywordTok{s}\NormalTok{(x, y), hr.beau.model, segdata, obsdata)}
+\NormalTok{mod5 <-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(Nhat~}\KeywordTok{s}\NormalTok{(x,y), hr.beau.model, segdata, obsdata)}
 \KeywordTok{summary}\NormalTok{(mod5)}
 \end{Highlighting}
 \end{Shaded}
@@ -1083,22 +1046,22 @@ model object:
 ## 
 ## Formula:
 ## Nhat ~ s(x, y) + offset(off.set)
-## <environment: 0x11623d390>
+## <environment: 0x7fda4aa497f0>
 ## 
 ## Parametric coefficients:
 ##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept)  -18.258      0.351     -52   <2e-16 ***
+## (Intercept)  -18.258      0.459   -39.7   <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## Approximate significance of smooth terms:
 ##        edf Ref.df    F p-value    
-## s(x,y)  26   28.1 5.77  <2e-16 ***
+## s(x,y)  26   28.1 3.37 4.6e-08 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
 ## R-sq.(adj) =  0.118   Deviance explained = 42.9%
-## GCV score =  75.24  Scale est. = 65.855    n = 387
+## GCV = 75.227  Scale est. = 112.79    n = 387
 \end{verbatim}
 
 Note that for models where there are covariates at the individual level
@@ -1113,25 +1076,26 @@ A plot of predictions from the covariate model:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod5.pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(mod5, preddata, off.set)}
-\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata, mod5.pred)}
+\NormalTok{mod5.pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(mod5,preddata, off.set)}
+\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata,mod5.pred)}
 
 \NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(pp) +}\StringTok{ }\NormalTok{gg.opts}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{fill =} \NormalTok{mod5.pred, }\DataTypeTok{width =} \NormalTok{width, }\DataTypeTok{height =} \NormalTok{height))}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x, }\DataTypeTok{y=}\NormalTok{y, }\DataTypeTok{fill=}\NormalTok{mod5.pred,}
+\DataTypeTok{width=}\NormalTok{width, }\DataTypeTok{height=}\NormalTok{height))}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y), }\DataTypeTok{data =} \NormalTok{survey.area)}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill =} \StringTok{"Abundance"}\NormalTok{)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x, }\DataTypeTok{y=}\NormalTok{y),}\DataTypeTok{data=}\NormalTok{survey.area)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill=}\StringTok{"Abundance"}\NormalTok{)}
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/mod5-pred.png}
+\includegraphics{figure/mod5-pred.png}
 \caption{Predicted density surface for \texttt{mod5}.}
 \end{figure}
 
-\subsection{Correlation structures}\label{correlation-structures}
+\section{Correlation structures}\label{correlation-structures}
 
 We can use a generalized mixed model (GAMM; Wood, 2006) to include
 correlation between the segments within each transect. First we re-code
@@ -1145,8 +1109,7 @@ residual autocorrelation, we show it here for illustrative purposes).
 \begin{Highlighting}[]
 \NormalTok{segdata$sg.id <-}\StringTok{ }\KeywordTok{as.numeric}\NormalTok{(segdata$Sample.Label)}
 \NormalTok{segdata$tr.id <-}\StringTok{ }\KeywordTok{as.numeric}\NormalTok{(segdata$Transect.Label)}
-\NormalTok{mod1.gamm <-}\StringTok{ }\KeywordTok{dsm}\NormalTok{(N ~}\StringTok{ }\KeywordTok{s}\NormalTok{(x, y), hr.model$ddf, segdata, obsdata, }\DataTypeTok{engine =} \StringTok{"gamm"}\NormalTok{, }
-    \DataTypeTok{correlation =} \KeywordTok{corAR1}\NormalTok{(}\DataTypeTok{form =} \NormalTok{~sg.id), }\DataTypeTok{method =} \StringTok{"REML"}\NormalTok{)}
+\NormalTok{mod1.gamm<-}\KeywordTok{dsm}\NormalTok{(N~}\KeywordTok{s}\NormalTok{(x,y), hr.model$ddf, segdata, obsdata,}\DataTypeTok{engine=}\StringTok{"gamm"}\NormalTok{,}\DataTypeTok{correlation=}\KeywordTok{corAR1}\NormalTok{(}\DataTypeTok{form=}\NormalTok{~sg.id),}\DataTypeTok{method=}\StringTok{"REML"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1192,7 +1155,7 @@ part \texttt{gam} (for the smooth terms). Looking at the
 ## 
 ## Formula:
 ## N ~ s(x, y) + offset(off.set)
-## <environment: 0x10b7e6518>
+## <environment: 0x7fda494c89c0>
 ## 
 ## Parametric coefficients:
 ##             Estimate Std. Error t value Pr(>|t|)    
@@ -1206,7 +1169,8 @@ part \texttt{gam} (for the smooth terms). Looking at the
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## R-sq.(adj) =  0.129  Scale est. = 68.686    n = 387
+## R-sq.(adj) =  0.129   
+##   Scale est. = 68.686    n = 387
 \end{verbatim}
 
 And run checks on the GAM part of the object (shown in Figure 14):
@@ -1219,7 +1183,7 @@ And run checks on the GAM part of the object (shown in Figure 14):
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/mod1-gamm-check.png}
+\includegraphics{figure/mod1-gamm-check.png}
 \caption{Diagnostic plots for \texttt{mod1.gamm}.}
 \end{figure}
 
@@ -1229,19 +1193,19 @@ this model to the previous models (Figure 15):
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{mod1.gamm.pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(mod1.gamm, preddata, off.set)}
-\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata, }\DataTypeTok{N =} \NormalTok{mod1.gamm.pred)}
-\NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(pp) +}\StringTok{ }\NormalTok{gg.opts}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y, }\DataTypeTok{fill =} \NormalTok{N, }\DataTypeTok{width =} \NormalTok{width, }\DataTypeTok{height =} \NormalTok{height))}
+\NormalTok{pp <-}\StringTok{ }\KeywordTok{cbind}\NormalTok{(preddata,}\DataTypeTok{N=}\NormalTok{mod1.gamm.pred)}
+\NormalTok{p <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{(pp)+gg.opts}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x,}\DataTypeTok{y=}\NormalTok{y,}\DataTypeTok{fill=}\NormalTok{N,}\DataTypeTok{width=}\NormalTok{width,}\DataTypeTok{height=}\NormalTok{height))}
 \NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{coord_equal}\NormalTok{()}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{x, }\DataTypeTok{y =} \NormalTok{y), }\DataTypeTok{data =} \NormalTok{survey.area)}
-\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill =} \StringTok{"Abundance"}\NormalTok{)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{geom_path}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{x, }\DataTypeTok{y=}\NormalTok{y),}\DataTypeTok{data=}\NormalTok{survey.area)}
+\NormalTok{p <-}\StringTok{ }\NormalTok{p +}\StringTok{ }\KeywordTok{labs}\NormalTok{(}\DataTypeTok{fill=}\StringTok{"Abundance"}\NormalTok{)}
 \KeywordTok{print}\NormalTok{(p)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{mexico-figs/mod1-gamm-preds.png}
+\includegraphics{figure/mod1-gamm-preds.png}
 \caption{Predicted density surface for \texttt{mod1.gamm}.}
 \end{figure}
 
@@ -1250,7 +1214,7 @@ propagation method:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{mod1.gamm.var <-}\StringTok{ }\KeywordTok{dsm.var.prop}\NormalTok{(mod1.gamm, }\DataTypeTok{pred.data =} \NormalTok{preddata, }\DataTypeTok{off.set =} \NormalTok{off.set)}
+\NormalTok{mod1.gamm.var <-}\StringTok{ }\KeywordTok{dsm.var.prop}\NormalTok{(mod1.gamm,}\DataTypeTok{pred.data=}\NormalTok{preddata,}\DataTypeTok{off.set=}\NormalTok{off.set)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1283,16 +1247,16 @@ propagation method:
 ## 
 ## Quantiles of differences between fitted model and variance model
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  -5.010  -0.401  -0.158   0.004  -0.009  11.900 
+##  -0.767  -0.188  -0.113   0.091  -0.005   8.040 
 ## 
 ## Approximate asymptotic confidence interval:
 ##    5%  Mean   95% 
-## 35616 45789 58867 
+## 35695 46042 59387 
 ## (Using delta method)
 ## 
-## Point estimate                 : 45789 
-## Standard error                 : 5893 
-## Coefficient of variation       : 0.1287
+## Point estimate                 : 46042 
+## Standard error                 : 6004 
+## Coefficient of variation       : 0.1304
 \end{verbatim}
 
 Comparing this to the variance from \texttt{mod1}, we can see the GAMM
@@ -1311,22 +1275,22 @@ offers a significant reduction in variance:
 ## 
 ## Quantiles of differences between fitted model and variance model
 ##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-## -1.56e-12 -5.00e-16  1.08e-14  5.25e-14  9.17e-14  1.99e-12 
+## -4.79e-12 -4.80e-14  2.00e-15  7.00e-15  9.80e-14  1.69e-12 
 ## 
 ## Approximate asymptotic confidence interval:
 ##    5%  Mean   95% 
-## 29962 47034 73832 
+## 25860 47034 85546 
 ## (Using delta method)
 ## 
 ## Point estimate                 : 47034 
-## Standard error                 : 10966 
-## Coefficient of variation       : 0.2331
+## Standard error                 : 14695 
+## Coefficient of variation       : 0.3124
 \end{verbatim}
 
 More information on \texttt{lme} can be found in Pinheiro and Bates
 (2000) and Wood (2006).
 
-\subsection{Conclusions}\label{conclusions}
+\section{Conclusions}\label{conclusions}
 
 This document has shown that the \texttt{dsm} package is a versatile and
 relatively easy-to-use package for the analysis of spatial distance
@@ -1336,7 +1300,7 @@ of the options. Results from the models can be rather different, so care
 must be taken in performing model selection, discrimination and
 criticism.
 
-\subsection{Notes}\label{notes}
+\section{Notes}\label{notes}
 
 \begin{itemize}[<+->]
 \itemsep1pt\parskip0pt\parsep0pt
@@ -1348,7 +1312,7 @@ criticism.
   \url{http://github.com/dill/dsm}, as well as on CRAN.
 \end{itemize}
 
-\subsection{References}\label{references}
+\section{References}\label{references}
 
 \begin{itemize}[<+->]
 \itemsep1pt\parskip0pt\parsep0pt

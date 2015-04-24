@@ -1,11 +1,13 @@
 ---
-title: "Example `dsm` analysis: pantropical dolphins in the Gulf of Mexico"
+title: 'Example `dsm` analysis: pantropical dolphins in the Gulf of Mexico'
 author: "David L. Miller"
 date: "October 2014"
 output:
+  pdf_document:
+    toc: yes
   html_document:
-    toc: true
-    number_sections: true
+    number_sections: yes
+    toc: yes
 ---
 
 ```{r echo=FALSE}

@@ -1,7 +1,7 @@
 ---
 title: 'Example `dsm` analysis: pantropical dolphins in the Gulf of Mexico'
 author: "David L. Miller"
-date: "October 2014"
+date: "June 2015"
 output:
   pdf_document:
     toc: yes
@@ -19,7 +19,7 @@ options(figure_counter = TRUE)
 # sometimes you want to calculate stuff inside the
 # chunk that you want to include in the caption and
 # it is therefore useful to evaluate it afterwards.
-opts_knit$set(eval.after='fig.cap')
+opts_knit$set(eval.after='fig.cap', comment=NA)
 
 # The actual hook
 knit_hooks$set(plot = function(x, options) {
@@ -172,16 +172,19 @@ p <- p + gg.opts
 print(p)
 ```
 
-Also note that since we've projected our prediction grid, the "squares" don't look quite like squares. So for plotting we'll use the polygons that we've saved. This makes plotting take a little longer, but avoids gaps and overplotting. Figure 2 compares using latitude/longitude with a projection.
+Also note that since we've projected our prediction grid, the "squares" don't look quite like squares. So for plotting we'll use the polygons that we've saved, these polygons (stored in `pred.polys`) are read from a shapefile created in GIS, the object itself is of class `SpatialPolygons` from the `sp` package. This plotting method makes plotting take a little longer, but avoids gaps and overplotting. Figure 2 compares using latitude/longitude with a projection.
 
-```{r projection-compare, fig.cap="Comparison between unprojected latitude and longitude (left) and the prediction grid projected using the North American Lambert Conformal Conic projection (right)"}
+```{r projection-compare, fig.cap="Comparison between unprojected latitude and longitude (left) and the prediction grid projected using the North American Lambert Conformal Conic projection (right)", fig.height=3}
 par(mfrow=c(1,2))
 
+# put pred.polys into lat/long
 pred_latlong <- spTransform(pred.polys,CRSobj=CRS("+proj=longlat +datum=WGS84"))
 
+# plot latlong
 plot(pred_latlong, xlab="Longitude", ylab="Latitude")
 axis(1); axis(2); box()
 
+# plot as proejcted
 plot(pred.polys, xlab="Northing", ylab="Easting")
 axis(1); axis(2); box()
 ```
@@ -265,7 +268,7 @@ print(p)
 
 # Estimating the detection function
 
-We use the `ds` function in the package `Distance` to fit the detection function.  (The `Distance` package is intended to make standard distance sampling in `R` relatively straightforward.  For a more flexible, but harder to use, alternaitve, see the function `ddf` in the `mrds` library.)
+We use the `ds` function in the package `Distance` to fit the detection function.  (The `Distance` package is intended to make standard distance sampling in `R` relatively straightforward.  For a more flexible, but harder to use, alternative, see the function `ddf` in the `mrds` library.)
 
 
 First, loading the `Distance` library:
@@ -302,7 +305,7 @@ mod1<-dsm(N~s(x,y), hr.model$ddf, segdata, obsdata)
 summary(mod1)
 ```
 
-We can then make the predictions over the the grid and calculate abundance. The offset is stored in the `area` column[^offsetcorrection].
+We can then make the predictions over the grid and calculate abundance. The offset is stored in the `area` column[^offsetcorrection].
 
 ``` {r}
 mod1.pred <- predict(mod1, preddata, preddata$area)
@@ -335,7 +338,7 @@ The plot is shown in Figure 8, and appears to have a spike at lag 6, but this is
 
 We can use the approach of Williams *et al* (2011), which accounts for uncertainty in detection function estimation in this situation where we have no covariates in the detection function.
 
-```{r mod1-varprop}
+```{r mod1-varprop, cache=TRUE}
 preddata.varprop <- split(preddata,1:nrow(preddata))
 mod1.varprop <- dsm.var.prop(mod1, pred.data=preddata.varprop,
                              off.set=preddata$area)
@@ -396,9 +399,8 @@ Response distributions other than the quasi-Poisson can be used, for example the
 
 
 ```{r tweedie-fit}
-mod3.12 <- dsm(N~s(x,y), hr.model, segdata, obsdata,
-               family=tw())
-summary(mod3.12)
+mod3 <- dsm(N~s(x,y), hr.model, segdata, obsdata, family=tw())
+summary(mod3)
 ```
 
 ### Negative binomial
@@ -414,7 +416,7 @@ To use a soap film smoother for the spatial part of the model we must create a s
 ```{r soap-knots}
 soap.knots <- make.soapgrid(survey.area,c(15,10))
 ```
-where the second argument specifies the number of points (in eadch direction) in the grid that will be used to create the knots (knots in the grid outside of `survey.area` are removed).
+where the second argument specifies the number of points (in each direction) in the grid that will be used to create the knots (knots in the grid outside of `survey.area` are removed).
 
 As we saw in the exploratory analysis, some of the transect lines are outside of the survey area. These will cause the soap film smoother to fail, so we remove them:
 ```{r, soap-setup}
@@ -456,9 +458,9 @@ summary(hr.beau.model)
 ```
 In this example, the detection function with covariates does not give a lower AIC than the model without covariates (`r round(hr.beau.model$ddf$criterion,2)` vs. `r round(hr.model$ddf$criterion,2)` for the hazard-rate model without covariates). Looking back to the bottom-right panel of Figure 3, we can see there is not a discernible pattern in the plot of Beaufort vs distance.
 
-The code to fit the model is similar to the other models, above. However since we are now using a detection function with observation-level covariates, we change the response to be `Nhat` so the abundances are estimated per segment and change the name ofthe detection function model object:
+The code to fit the model is similar to the other models, above. However since we are now using a detection function with observation-level covariates, we change the response to be `Nhat` so the abundances are estimated per segment and change the name of the detection function model object:
 ``` {r cache=TRUE}
-mod5 <- dsm(Nhat~s(x,y), hr.beau.model, segdata, obsdata)
+mod5 <- dsm(Nhat~s(x,y), hr.beau.model, segdata, obsdata, family=tw())
 summary(mod5)
 ```
 Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams et al (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`), or use the moving block bootstrap. Other than this, all of the above functions can be used.
@@ -476,10 +478,10 @@ print(p)
 
 We can use a generalized mixed model (GAMM; Wood, 2006) to include correlation between the segments within each transect. First we re-code the sample labels and transect labels as numeric variables, then include them in the model as part of the `correlation` argument (segments are nested inside the transects). For the sake of example we use an AR1 (lag 1 autocorrelation) correlation structure (though the correlogram did not indicate we had issues with residual autocorrelation, we show it here for illustrative purposes).
 
-```{r cache=TRUE}
+```{r mod6, cache=TRUE}
 segdata$sg.id <- as.numeric(sub("\\d+-","",segdata$Sample.Label))
 segdata$tr.id <- as.numeric(segdata$Transect.Label)
-mod1.gamm<-dsm(N~s(x,y), hr.model$ddf, segdata, obsdata,engine="gamm",correlation=corAR1(form=~sg.id|tr.id), method="REML")
+mod6<-dsm(N~s(x,y), hr.model$ddf, segdata, obsdata,engine="gamm",correlation=corAR1(form=~sg.id|tr.id), method="REML")
 ```
 
 This example also includes using `method="REML"` for smoothing parameter selection.
@@ -488,25 +490,25 @@ GAMMs usually take considerably longer to fit than GAMs, so it's usually start w
 
 The object returned is part `lme` (for the random effects) and part `gam` (for the smooth terms). Looking at the `summary()` for the `gam` part of the model:
 ```{r}
-summary(mod1.gamm$gam)
+summary(mod6$gam)
 ```
 And run checks on the GAM part of the object (shown in Figure 13):
-```{r mod1-gamm-check, fig.cap="Diagnostic plots for `mod1.gamm`.", fig.width=6, fig.height=6}
-gam.check(mod1.gamm$gam)
+```{r mod6-check, fig.cap="Diagnostic plots for `mod6`.", fig.width=6, fig.height=6}
+gam.check(mod6$gam)
 ```
 We can now make predictions and compare the abundance map produced by this model to the previous models (Figure 14):
-```{r mod1-gamm-preds, fig.cap="Predicted density surface for `mod1.gamm`."}
-mod1.gamm.pred <- predict(mod1.gamm, preddata, preddata$area)
-p <- ggplot() + grid_plot_obj(mod1.gamm.pred, "Abundance") + coord_equal() +gg.opts
+```{r mod6-preds, fig.cap="Predicted density surface for `mod6`."}
+mod6.pred <- predict(mod6, preddata, preddata$area)
+p <- ggplot() + grid_plot_obj(mod6.pred, "Abundance") + coord_equal() +gg.opts
 p <- p + geom_path(aes(x=x, y=y), data=survey.area)
 p <- p + labs(fill="Abundance")
 print(p)
 ```
 
 Again, estimating variance is straightforward using the variance propagation method:
-```{r cache=TRUE}
-mod1.gamm.var <- dsm.var.prop(mod1.gamm, pred.data=preddata, off.set=preddata$area)
-summary(mod1.gamm.var)
+```{r mod6-var, cache=TRUE}
+mod6.varprop <- dsm.var.prop(mod6, pred.data=preddata, off.set=preddata$area)
+summary(mod6.varprop)
 ```
 
 Comparing this to the variance from `mod1`, we can see the GAMM offers a significant reduction in variance:
@@ -516,6 +518,60 @@ summary(mod1.varprop)
 ```
 
 More information on `lme` can be found in Pinheiro and Bates (2000) and Wood (2006).
+
+# Model comparison
+
+Though this document doesn't intend to be a full analysis of the pantropical dolphin data, we can create a results table to compare the various models that have been fitted so far in terms of their abundance estimates and associated uncertainties.
+
+```{r modelcomp, cache=TRUE}
+# make predictions and calculate variances for those models
+# we've not done that for yet
+mod3.pred <- predict(mod3, preddata, preddata$area)
+mod2.varprop <- dsm.var.prop(mod2, pred.data = preddata, off.set = preddata$area)
+mod3.varprop <- dsm.var.prop(mod3, pred.data = preddata, off.set = preddata$area)
+mod4.varprop <- dsm.var.prop(mod4, pred.data = preddata, off.set = preddata$area)
+mod5.var <- dsm.var.gam(mod5, pred.data = preddata, off.set = preddata$area)
+
+
+# calculate asymptotic log-normal confidence intervals
+ci_calc <- function(x){
+
+  summ <- summary(x)
+  ci <- exp(1.96*sqrt(log(1+summ$cv^2)))
+  paste(formatC(c(summ$pred.est/ci, summ$pred.est*ci),0, format="f", big.mark=","), collapse="--")
+}
+
+# make a data.frame to print out
+mod_results <- data.frame("Model name" = c("`mod1`", "`mod2`", "`mod3`", "`mod4`",
+                                           "`mod5`", "`mod6`"),
+                          "Description" = c("Bivariate smooth of location, quasipoisson",
+                                            "Bivariate smooth of location, smooth of depth, quasipoisson",
+                                            "Bivariate smooth of location, smooth of depth, Tweedie",
+                                            "Soap film smooth of location, smooth of depth, Tweedie",
+                                            "Bivariate smooth of location, smooth of depth, Tweedie, beaufort covariate in detection function",
+                                            "Bivariate smooth of location,Tweedie, correlation structure"),
+                         "Abundance"           = formatC(c(sum(mod1.pred),
+                                                         sum(mod2.pred),
+                                                         sum(mod3.pred),
+                                                         sum(mod4.pred),
+                                                         sum(mod5.pred),
+                                                         sum(mod6.pred)),0, format="f", big.mark=","),
+                         "Confidence interval" = c(ci_calc(mod1.varprop),
+                                                   ci_calc(mod2.varprop),
+                                                   ci_calc(mod3.varprop),
+                                                   ci_calc(mod4.varprop),
+                                                   ci_calc(mod5.var),
+                                                   ci_calc(mod6.varprop)))
+
+
+```
+
+We can then use the resulting `data.frame` to build a table of results using the `kable` function:
+
+```{r results-table, results='asis'}
+kable(mod_results, col.names=c("Model name", "Description",
+                               "Abundance", "Confidence interval"))
+```
 
 
 # Conclusions

@@ -161,3 +161,14 @@ obsdata <- obsdata[obsdata$size>0,]
 
 # save everything to file
 save(segdata, obsdata, distdata, preddata, survey.area, pred.polys, file="../data/dolphins.RData")
+
+
+# write the predictions as shapefiles
+row.names(preddata) <- as.character(1:nrow(preddata))
+pp.df <- SpatialPolygonsDataFrame(pp.t, preddata)
+writeSpatialShape(pp.df, "prediction-grid")
+
+proj4string(survey.area) <- CRS("+proj=longlat +datum=WGS84")
+survey.area <- spTransform(survey.area,CRSobj=lcc_proj4)
+writeSpatialShape(survey.area,"survey-area")
+

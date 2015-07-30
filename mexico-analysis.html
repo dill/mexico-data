@@ -107,8 +107,16 @@ img {
 <div id="preamble" class="section level1">
 <h1><span class="header-section-number">2</span> Preamble</h1>
 <p>Before we start, we load the <code>dsm</code> package (and its dependencies) and set some options:</p>
-<pre class="r"><code>library(dsm)
-library(ggplot2)
+<pre class="r"><code>library(dsm)</code></pre>
+<pre><code>## Loading required package: mgcv
+## Loading required package: nlme
+## This is mgcv 1.8-6. For overview type 'help(&quot;mgcv-package&quot;)'.
+## Loading required package: mrds
+## This is mrds 2.1.12
+## Built: R 3.2.0; ; 2015-04-19 03:42:48 UTC; unix
+## This is dsm 2.2.9
+## Built: R 3.2.1; ; 2015-07-29 12:37:12 UTC; unix</code></pre>
+<pre class="r"><code>library(ggplot2)
 
 # plotting options
 gg.opts &lt;- theme(panel.grid.major=element_blank(),
@@ -123,9 +131,8 @@ set.seed(11123)</code></pre>
 <div id="observation-and-segment-data" class="section level2">
 <h2><span class="header-section-number">3.1</span> Observation and segment data</h2>
 <p>All of the data for this analysis has been nicely pre-formatted and is shipped with <code>dsm</code>. Loading up that data, we can see that we have four data frames, the first few lines of each are shown:</p>
-<pre class="r"><code>#data(mexdolphins)
-load(&quot;data/dolphins.RData&quot;)
-#attach(mexdolphins)
+<pre class="r"><code>data(mexdolphins)
+attach(mexdolphins)
 head(segdata)</code></pre>
 <pre><code>##   longitude latitude        x        y Effort Transect.Label Sample.Label
 ## 1 -86.92712 29.94378 836105.9 -1011416  13800       19960417   19960417-1
@@ -316,7 +323,6 @@ Figure 4: Plot of depth values over the survey area with transects and observati
 <p>We can then fit a detection function with hazard-rate key with no adjustment terms:</p>
 <pre class="r"><code>hr.model&lt;-ds(distdata,max(distdata$distance),key=&quot;hr&quot;,adjustment=NULL)</code></pre>
 <pre><code>## Fitting hazard-rate key function
-## Key only models do not require monotonicity contraints. Not constraining model for monotonicity.
 ## AIC= 841.253
 ## No survey area information supplied, only estimating detection function.</code></pre>
 <pre class="r"><code>summary(hr.model)</code></pre>

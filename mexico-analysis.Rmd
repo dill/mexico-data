@@ -116,9 +116,8 @@ set.seed(11123)
 
 All of the data for this analysis has been nicely pre-formatted and is shipped with `dsm`. Loading up that data, we can see that we have four data frames, the first few lines of each are shown:
 ```{r loaddata}
-#data(mexdolphins)
-load("data/dolphins.RData")
-#attach(mexdolphins)
+data(mexdolphins)
+attach(mexdolphins)
 head(segdata)
 head(distdata)
 head(obsdata)

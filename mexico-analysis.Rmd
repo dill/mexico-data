@@ -11,76 +11,12 @@ output:
 ---
 
 ```{r echo=FALSE}
-# taken from http://gforge.se/2014/01/fast-track-publishing-using-knitr-part-iii/
 library(knitr)
-options(figure_counter = TRUE)
+library(captioner)
 
-# Evaluate the figure caption after the chunk,
-# sometimes you want to calculate stuff inside the
-# chunk that you want to include in the caption and
-# it is therefore useful to evaluate it afterwards.
-opts_knit$set(eval.after='fig.cap', comment=NA)
-
-# The actual hook
-knit_hooks$set(plot = function(x, options) {
-  fig_fn = paste0(opts_knit$get("base.url"),
-                  paste(x, collapse = "."))
-
-  # Some stuff from the default definition
-  fig.cap <- knitr:::.img.cap(options)
-
-  # Style and additional options that should be included in the img tag
-  style=c("display: block",
-          sprintf("margin: %s;",
-                   switch(options$fig.align,
-                          left = 'auto auto auto 0',
-                          center = 'auto',
-                          right = 'auto 0 auto auto')))
-  # Certain arguments may not belong in style,
-  # for instance the width and height are usually
-  # outside if the do not have a unit specified
-  addon_args = ""
-
-  # This is perhaps a little overly complicated prepared
-  # with the loop but it allows for a more out.parameters if necessary
-  if (any(grepl("^out.(height|width)", names(options)))){
-      on <- names(options)[grep("^out.(height|width)", names(options))]
-      for(out_name in on){
-          dimName <- substr(out_name, 5, nchar(out_name))
-          if (grepl("[0-9]+(em|px|%|pt|pc|in|cm|mm)", out_name))
-              style=append(style, paste0(dimName, ": ", options[[out_name]]))
-          else if (length(options$out.width) > 0)
-              addon_args = paste0(addon_args, dimName, "='", options[[out_name]], "'")
-      }
-  }
-
-  # Add counter if wanted
-  fig_number_txt <- ""
-  cntr <- getOption("figure_counter", FALSE)
-  if (cntr != FALSE){
-    if (is.logical(cntr))
-      cntr <- 1
-    # The figure_counter_str allows for custom
-    # figure text, you may for instance want it in
-    # bold: <b>Figure %s:</b>
-    # The %s is so that you have the option of setting the
-    # counter manually to 1a, 1b, etc if needed
-    fig_number_txt <-
-      sprintf(getOption("figure_counter_str", "Figure %s: "),
-              ifelse(getOption("figure_counter_roman", FALSE),
-                     as.character(as.roman(cntr)), as.character(cntr)))
-
-    if (is.numeric(cntr))
-      options(figure_counter = cntr + 1)
-  }
-
-  # Put it all together
-  paste0("<figure><img src='", fig_fn, "'",
-         " ", addon_args,
-         paste0(" style='", paste(style, collapse="; "), "'"),
-         ">",
-         "<figcaption>", fig_number_txt, fig.cap, "</figcaption></figure>")
-})
+# make a numbering for figures
+fig_nums <- captioner(prefix="Figure")
+fig_c <- function(p) fig_nums(p, display="cite")
 
 # cache rules everything around me
 opts_chunk$set(cache=TRUE)
@@ -161,9 +97,13 @@ names(survey.area) <- c("x","y")
 
 Using latitude and longitude when performing spatial smoothing can be problematic when certain smoother bases are used. In particular when bivariate isotropic bases are used the non-isotropic nature of latitude and longitude is inconsistent (moving one degree in one direction is not the same as moving one degree in the other).
 
-The below code generates Figure 1, which shows the survey area with the transect lines overlaid (using data from `segdata`).
+```{r echo=FALSE}
+fig_nums(name="areawithtransects", caption="The survey area with transect lines.", display=FALSE)
+```
 
-```{r areawithtransects, fig.cap="The survey area with transect lines."}
+The below code generates `r fig_nums("areawithtransects", display = "cite")`, which shows the survey area with the transect lines overlaid (using data from `segdata`).
+
+```{r areawithtransects, fig.cap="", fig.height=4}
 p <- qplot(data=survey.area, x=x, y=y, geom="polygon",fill=I("lightblue"),
 ylab="y", xlab="x", alpha=I(0.7))
 p <- p + coord_equal()
@@ -173,9 +113,15 @@ p <- p + gg.opts
 print(p)
 ```
 
-Also note that since we've projected our prediction grid, the "squares" don't look quite like squares. So for plotting we'll use the polygons that we've saved, these polygons (stored in `pred.polys`) are read from a shapefile created in GIS, the object itself is of class `SpatialPolygons` from the `sp` package. This plotting method makes plotting take a little longer, but avoids gaps and overplotting. Figure 2 compares using latitude/longitude with a projection.
+`r fig_nums("areawithtransects")`
 
-```{r projection-compare, fig.cap="Comparison between unprojected latitude and longitude (left) and the prediction grid projected using the North American Lambert Conformal Conic projection (right)", fig.height=3}
+Also note that since we've projected our prediction grid, the "squares" don't look quite like squares. So for plotting we'll use the polygons that we've saved, these polygons (stored in `pred.polys`) are read from a shapefile created in GIS, the object itself is of class `SpatialPolygons` from the `sp` package. This plotting method makes plotting take a little longer, but avoids gaps and overplotting. `r fig_nums("projection-compare", display="cite")` compares using latitude/longitude with a projection.
+
+```{r echo=FALSE}
+fig_nums(name="projection-compare", caption="Comparison between unprojected latitude and longitude (left) and the prediction grid projected using the North American Lambert Conformal Conic projection (right)", display=FALSE)
+```
+
+```{r projection-compare, fig.cap="", fig.height=3}
 par(mfrow=c(1,2))
 
 # put pred.polys into lat/long
@@ -189,6 +135,9 @@ axis(1); axis(2); box()
 plot(pred.polys, xlab="Northing", ylab="Easting")
 axis(1); axis(2); box()
 ```
+
+`r fig_nums("projection-compare")`
+
 
 Tips on plotting polygons are available from [the `ggplot2` wiki](https://github.com/hadley/ggplot2/wiki/plotting-polygon-shapefiles).
 
@@ -227,11 +176,15 @@ grid_plot_obj <- function(fill, name){
 
 ## Distance data
 
-The top panels of Figure 3, below, show histograms of observed distances and cluster size, while the bottom panels show the relationship between observed distance and observed cluster size, and the relationship between observed distance and Beaufort sea state. The plots show that there is some relationship between cluster size and observed distance (fewer smaller clusters seem to be seen at larger distances).
+The top panels of `r fig_c("EDA-plots")`, below, show histograms of observed distances and cluster size, while the bottom panels show the relationship between observed distance and observed cluster size, and the relationship between observed distance and Beaufort sea state. The plots show that there is some relationship between cluster size and observed distance (fewer smaller clusters seem to be seen at larger distances).
 
-The following code generates Figure 3:
+```{r echo=FALSE}
+fig_nums(name="EDA-plots", caption="Exploratory plot of the distance sampling data. Top row, left to right: histograms of distance and cluster size; bottom row: plot of distance against cluster size and plot of distances against Beaufort sea state.", display=FALSE)
+```
 
-```{r EDA-plots, fig.height=7, fig.width=7, fig.cap="Exploratory plot of the distance sampling data. Top row, left to right: histograms of distance and cluster size; bottom row: plot of distance against cluster size and plot of distances against Beaufort sea state.", results="hide"}
+The following code generates `r fig_c("EDA-plots")`:
+
+```{r EDA-plots, fig.height=7, fig.width=7, fig.cap="", results="hide"}
 par(mfrow=c(2,2))
 
 # histograms
@@ -251,13 +204,20 @@ plot(distdata$distance,distdata$beaufort, main="", xlab="Distance (m)",
      ylab="Beaufort sea state", pch=19, cex=0.5, col=rgb(0.74,0.74,0.74,0.7))
 ```
 
+`r fig_nums("EDA-plots")`
+
+
 
 ## Spatial data
 
-Looking separately at the spatial data without thinking about the distances, we can see the distribution of group size in space in Figure 4, below. Circle size indicates the size of the group in the observation. There are rather large areas with no observations, which might cause our variance estimates for abundance to be rather large. Figure 3 also shows the raw depth data which we will use depth later as an explanatory covariate in our spatial model. The plot shows that we don't seem to have many observations in the very shallow areas near the shore. This should make us skeptical of predictions in those areas.
+Looking separately at the spatial data without thinking about the distances, we can see the distribution of group size in space in `r fig_c("spatialEDA")`, below. Circle size indicates the size of the group in the observation. There are rather large areas with no observations, which might cause our variance estimates for abundance to be rather large. `r fig_c("spatialEDA")` also shows the raw depth data which we will use depth later as an explanatory covariate in our spatial model. The plot shows that we don't seem to have many observations in the very shallow areas near the shore. This should make us skeptical of predictions in those areas.
 
-The following code generates Figure 4:
-```{r spatialEDA, fig.cap="Plot of depth values over the survey area with transects and observations overlaid. Point size is proportional to the group size for each observation."}
+```{r echo=FALSE}
+fig_nums(name="spatialEDA", caption="Plot of depth values over the survey area with transects and observations overlaid. Point size is proportional to the group size for each observation.", display=FALSE)
+```
+
+The following code generates `r fig_c("spatialEDA")`:
+```{r spatialEDA, fig.cap=""}
 p <- ggplot() + grid_plot_obj(preddata$depth, "Depth") + coord_equal()
 p <- p + labs(fill="Depth",x="x",y="y",size="Group size")
 p <- p + geom_line(aes(x, y, group=Transect.Label), data=segdata)
@@ -265,6 +225,9 @@ p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="red",alpha=I(0.
 p <- p + gg.opts
 print(p)
 ```
+
+`r fig_nums("spatialEDA")`
+
 
 
 # Estimating the detection function
@@ -286,10 +249,18 @@ Calling `summary` gives us information about parameter estimates, probability of
 summary(hr.model)
 ```
 
-The following code generates a plot of the fitted detection function (Figure 5):
-``` {r hr-detfct, fig.cap="Plot of the fitted detection function.", fig.width=6, fig.height=6}
+```{r echo=FALSE}
+fig_nums(name="hr-detfct", caption="Plot of the fitted hazard-rate detection function.", display=FALSE)
+```
+
+
+The following code generates a plot of the fitted detection function (`r fig_c("hr-detfct")`):
+``` {r hr-detfct, fig.cap="", fig.width=6, fig.height=6}
 plot(hr.model)
 ```
+
+`r fig_nums("hr-detfct")`
+
 
 ## Adding covariates to the detection function
 
@@ -302,7 +273,7 @@ Again looking at the `summary`,
 ```{r hrcovdfsummary}
 summary(hr.beau.model)
 ```
-Here the detection function with covariates does not give a lower AIC than the model without covariates (`r round(hr.beau.model$ddf$criterion,2)` vs. `r round(hr.model$ddf$criterion,2)` for the hazard-rate model without covariates). Looking back to the bottom-right panel of Figure 3, we can see there is not a discernible pattern in the plot of Beaufort vs distance.
+Here the detection function with covariates does not give a lower AIC than the model without covariates (`r round(hr.beau.model$ddf$criterion,2)` vs. `r round(hr.model$ddf$criterion,2)` for the hazard-rate model without covariates). Looking back to the bottom-right panel of `r fig_c("EDA-plots")`, we can see there is not a discernible pattern in the plot of Beaufort vs distance.
 
 For brevity, detection function model selection has been omitted here. In practise we would fit many different forms for the detection function (and select a model based on goodness of fit testing and AIC). Later in this document, we demonstrate fitting of a detection function with size as a covariate, but for now we stick to a simple model.
 
@@ -329,10 +300,18 @@ The exact interpretation of the model summary results can be found in Wood (2006
 
 Note though that the adjusted $R^2$ for the model is defined as the proportion of variance explained but the "original" variance used for comparison doesn't include the offset (the area (or effective of the segments). It is therefore not recommended for one to directly interpret the $R^2$ value (see the `summary.gam` manual page for further details).
 
+```{r echo=FALSE}
+fig_nums(name="visgam1", caption="Plot of the spatial smooth in `mod1`.", display=FALSE)
+```
+
+
 We can also get a rough idea of what the smooth of space looks like using `vis.gam`:
-```{r fig.cap="Plot of the spatial smooth in `mod1`."}
+```{r visgam1, fig.cap=""}
 vis.gam(mod1, plot.type="contour", view=c("x","y"), asp=1, type="response", zlim=c(0,280))
 ```
+
+
+`r fig_nums("visgam1")`
 
 
 ## Adding another environmental covariate to the spatial model
@@ -346,10 +325,16 @@ Here we see a drop in deviance explained and $R^2$, so perhaps this model is not
 
 Setting `select=TRUE` here would impose extra shrinkage terms on each smooth in the model (allowing smooth terms to be removed from the model during fitting; see `?gam` for more information). This is not particularly useful here, so we do not include it. However when there are many environmental predictors is in the model this can be a good way (along with looking at $p$-values) to perform term selection.
 
-Simply calling `plot` on the model object allows us to look at the relationship between depth and the linear predictor (shown in Figure 11):
-``` {r mod2-depth, fig.cap="Plot of the smooth of depth in `mod2`."}
+```{r echo=FALSE}
+fig_nums(name="mod2-depth", caption="Plot of the smooth of depth in `mod2`.", display=FALSE)
+```
+
+Simply calling `plot` on the model object allows us to look at the relationship between depth and the linear predictor (shown in `r fig_c("mod2-depth")`):
+```{r mod2-depth, fig.cap=""}
 plot(mod2, select=2)
 ```
+
+`r fig_nums("mod2-depth")`
 
 Omitting the argument `select` in the call to `plot` will plot each of the smooth terms, one at a time.
 
@@ -364,10 +349,18 @@ As we can see, the `summary` results are rather similar:
 ```{r}
 summary(mod5)
 ```
+
+```{r echo=FALSE}
+fig_nums(name="visgam5", caption="Plot of the spatial smooth in `mod5`.", display=FALSE)
+```
+
 As is the resulting spatial smooth (though the resulting surface is somewhat "amplified):
-```{r fig.cap="Plot of the spatial smooth in `mod5`."}
+```{r visgam5, fig.cap=""}
 vis.gam(mod5, plot.type="contour", view=c("x","y"), asp=1, type="response", zlim=c(0,280))
 ```
+
+
+`r fig_nums("visgam5")`
 
 
 ## Other response distributions
@@ -453,17 +446,32 @@ Fitting models is all well and good, but we'd like to confirm that the models we
 
 ## Goodness of fit, residuals etc
 
-Figure 7 shows diagnostic plots for the DSM with a quasi-Poisson response, using `gam.check`:
-``` {r mod1-check, fig.cap="Diagnostic plots for `mod1`.", fig.width=6, fig.height=6}
+```{r echo=FALSE}
+fig_nums(name="mod1-check", caption="Diagnostic plots for `mod1`.", display=FALSE)
+```
+
+`r fig_c("mod1-check")` shows diagnostic plots for the DSM with a quasi-Poisson response, using `gam.check`:
+```{r mod1-check, fig.cap="", fig.width=6, fig.height=6}
 gam.check(mod1)
 ```
 
+`r fig_nums("mod1-check")`
+
+
 These show that there is some deviation in the Q-Q plot. The "line" of points in the plot of the residuals vs. linear predictor plot corresponds to the zeros in the data.
 
+
+```{r echo=FALSE}
+fig_nums(name="mod3-check", caption="Diagnostic plots for `mod3`.", display=FALSE)
+```
+
 We can look at the same model form but with a Tweedie distribution specified as the response:
-``` {r mod3-check, fig.cap="Diagnostic plots for `mod3`.", fig.width=6, fig.height=6}
+``` {r mod3-check, fig.cap="", fig.width=6, fig.height=6}
 gam.check(mod3)
 ```
+
+`r fig_nums("mod3-check")`
+
 
 The Q-Q plot now seems much better (closer to the $y=x$ line).
 
@@ -475,9 +483,15 @@ In the top right panel of the above `gam.check` plots the residuals vs. linear p
 
 Randomised quantile residuals (Dunn and Smyth, 1996) avoid this issue by transforming the residuals to be exactly normally distributed. This makes the residuals vs. linear predictor plot much easier to interpret. These plots can be produced using `rqgam.check` in `dsm`.
 
-``` {r mod3-rqcheck, fig.cap="Randomised quantile residual diagnostic plots for `mod3`.", fig.width=6, fig.height=6}
+```{r echo=FALSE}
+fig_nums(name="mod3-rqcheck", caption="Randomised quantile residual diagnostic plots for `mod3`.", display=FALSE)
+```
+
+``` {r mod3-rqcheck, fig.cap="", fig.width=6, fig.height=6}
 rqgam.check(mod3)
 ```
+
+`r fig_nums("mod3-rqcheck")`
 
 Here we can see that there is no issue with heterskedasticity. One can also plot these residuals against covariate values to check for pattern in the residuals.
 
@@ -494,10 +508,18 @@ The `?choose.k` manual page from `mgcv` gives further guidance and technical det
 ## Autocorrelation
 
 In all spatial models we need to be aware of the issue of spatial autocorrelation. To check for residual autocorrelation we use the `dsm.cor` function:
-```{r mod1-cor, fig.cap="Residual autocorrelation in `mod1`.", fig.height=5, fig.width=5}
+
+```{r echo=FALSE}
+fig_nums(name="mod1-cor", caption="Residual autocorrelation in `mod1`.", display=FALSE)
+```
+
+```{r mod1-cor, fig.cap="", fig.height=5, fig.width=5}
 dsm.cor(mod1, max.lag=10, Segment.Label="Sample.Label")
 ```
-The plot is shown in Figure 8, and appears to have a spike at lag 6, but this is beyond the range of being interesting.
+
+`r fig_nums("mod1-cor")`
+
+The plot is shown in `r fig_c("mod1-cor")`, and appears to have a spike at lag 6, but this is beyond the range of being interesting.
 
 Note that for data where there are many sample occasions over time, it may not be appropriate to simple plot the autocorrelogram over the whole data at once, but rather one may need to plot an autocorrelogram for each sample occasion.
 
@@ -538,32 +560,47 @@ kable(mod_results, col.names=c("Model name", "Description", "Deviance explained"
 
 Once a model has been checked and selected, we can make predictions over the grid and calculate abundance. The offset is stored in the `area` column[^offsetcorrection].
 
-``` {r}
+```{r}
 mod1.pred <- predict(mod1, preddata, preddata$area)
 ```
 
-Figure 6 shows a map of the predicted abundance. We use the `grid_plot_obj` helper function to assign the predictions to grid cells (polygons).
+```{r echo=FALSE}
+fig_nums(name="mod1-preds", caption="Predicted density surface for `mod1`.", display=FALSE)
+```
 
-``` {r mod1-preds, fig.cap="Predicted density surface for `mod1`."}
+`r fig_c("mod1-preds")` shows a map of the predicted abundance. We use the `grid_plot_obj` helper function to assign the predictions to grid cells (polygons).
+
+```{r mod1-preds, fig.cap=""}
 p <- ggplot() + grid_plot_obj(mod1.pred, "Abundance") + coord_equal() +gg.opts
 p <- p + geom_path(aes(x=x, y=y),data=survey.area)
 p <- p + labs(fill="Abundance")
 print(p)
 ```
+
+`r fig_nums("mod1-preds")`
+
 We can calculate abundance over the survey area by simply summing these predictions:
 ``` {r mod1-abund}
 sum(mod1.pred)
 ```
 
-We can compare this with a plot of the predictions from this `mod2` (Figure 10, code below).
+We can compare this with a plot of the predictions from this `mod2` (`r fig_c("mod2-preds")`, code below).
 
-``` {r mod2-preds, fig.cap="Predicted density surface for `mod2`."}
+```{r echo=FALSE}
+fig_nums(name="mod2-preds", caption="Predicted density surface for `mod2`.", display=FALSE)
+```
+
+
+```{r mod2-preds, fig.cap=""}
 mod2.pred <- predict(mod2, preddata, preddata$area)
 p <- ggplot() + grid_plot_obj(mod2.pred, "Abundance") + coord_equal() +gg.opts
 p <- p + geom_path(aes(x=x, y=y), data=survey.area)
 p <- p + labs(fill="Abundance")
 print(p)
 ```
+
+`r fig_nums("mod2-preds")`
+
 
 We can see the inclusion of depth into the model has had a noticeable effect on the distribution. We can again also look at the total abundance:
 ``` {r mod2-abund}
@@ -589,13 +626,21 @@ The section titled `Quantiles of differences between fitted model and variance m
 
 Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams *et al* (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`), or use the moving block bootstrap (`dsm.var.movblk`). Other than this, all of the above functions can be used.
 
-We can also make a plot of the CVs using the following code (shown in Figure 9).
-``` {r, fig.cap="Plot of the coefficient of variation for the study area with transect lines and observations overlaid."}
+
+```{r echo=FALSE}
+fig_nums(name="mod1varplot", caption="Plot of the coefficient of variation for the study area with transect lines and observations overlaid.", display=FALSE)
+```
+
+We can also make a plot of the CVs using the following code (`r fig_c("mod1varplot")`).
+```{r mod1varplot, fig.cap=""}
 p <- ggplot() + grid_plot_obj(sqrt(mod1.varprop$pred.var)/unlist(mod1.varprop$pred),
                               "CV") + coord_equal() +gg.opts
 p <- p + geom_path(aes(x=x, y=y),data=survey.area)
 print(p)
 ```
+
+`r fig_nums("mod1varplot")`
+
 
 
 # Conclusions

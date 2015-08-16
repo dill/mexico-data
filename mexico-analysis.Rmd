@@ -17,9 +17,6 @@ library(captioner)
 # make a numbering for figures
 fig_nums <- captioner(prefix="Figure")
 fig_c <- function(p) fig_nums(p, display="cite")
-
-# cache rules everything around me
-opts_chunk$set(cache=TRUE)
 ```
 
 

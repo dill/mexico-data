@@ -1,7 +1,7 @@
 ---
 title: 'Example `dsm` analysis: pantropical dolphins in the Gulf of Mexico'
 author: "David L. Miller"
-date: "June 2015"
+date: "August 2015"
 output:
   pdf_document:
     toc: yes
@@ -48,29 +48,41 @@ set.seed(11123)
 
 ## Observation and segment data
 
-All of the data for this analysis has been nicely pre-formatted and is shipped with `dsm`. Loading up that data, we can see that we have four data frames, the first few lines of each are shown:
+All of the data for this analysis has been nicely pre-formatted and is shipped with `dsm`. Loading that data, we can see that we have four data frames, the first few lines of each are shown:
 ```{r loaddata}
 data(mexdolphins)
 attach(mexdolphins)
+```
+`segdata` holds the segment data: the transects have already been "chopped" into segments.
+```{r head-segdata}
 head(segdata)
+```
+`distdata` holds the distance sampling data that will be used to fit the detection function.
+```{r head-distdata}
 head(distdata)
+```
+`obsdata` links the distance data to the segments.
+```{r head-obsdata}
 head(obsdata)
+```
+`preddata` holds the prediction grid (which includes all the necessary covariates).
+```{r head-preddata}
 head(preddata)
 ```
-`distdata` holds the distance sampling data that will be used to fit the detection function. `segdata` holds the segment data: the transects have already been "chopped" into segments. `obsdata` holds the observations which have already been aggregated to the segments and `preddata` holds the prediction grid (which includes all the necessary covariates).
-
-Typically (i.e. for other datasets) it will be necessary divide the transects into segments, and allocate observations to the correct segments using a GIS or other similar package, before starting an analysis using `dsm`.
+Typically (i.e. for other datasets) it will be necessary divide the transects into segments, and allocate observations to the correct segments using a GIS or other similar package[^MGET], before starting an analysis using `dsm`.
 
 
 ## Shapefiles and converting units
 
-It is important to ensure that the measurements to be used in the analysis are in compatible units, otherwise the resulting estimates will be incorrect or hard to interpret. Having all of our measurements in SI units from the outset removes the need for conversion later, making life much easier.
+Often data in a spatial analysis comes from many different sources. It is important to ensure that the measurements to be used in the analysis are in compatible units, otherwise the resulting estimates will be incorrect or hard to interpret. Having all of our measurements in SI units from the outset removes the need for conversion later, making life much easier.
 
 The data are already in the appropriate units (Northings and Eastings: kilometres from a centroid, projected using the [North American Lambert Conformal Conic projection](https://en.wikipedia.org/wiki/Lambert_conformal_conic_projection)).
 
 There is extensive literature about when particular projections of latitude and longitude are appropriate and we highly recommend the reader review this for their particular study area; Bivand *et al* (2013) is a good starting point. The other data frames have already had their measurements appropriately converted. By convention the directions are named `x` and `y`.
 
-We give an example of projecting the survey area (which as simply been read into R using `readShapeSpatial` from a shapefile produced by GIS). Here to show that projection is a relatively simple process:
+Using latitude and longitude when performing spatial smoothing can be problematic when certain smoother bases are used. In particular when bivariate isotropic bases are used the non-isotropic nature of latitude and longitude is inconsistent (moving one degree in one direction is not the same as moving one degree in the other).
+
+We give an example of projecting the polygon that defines the survey area (which as simply been read into R using `readShapeSpatial` from a shapefile produced by GIS).
 
 ```{r projectsurvey, results='hide', message=FALSE}
 library(rgdal)
@@ -84,15 +96,13 @@ proj4string(survey.area) <- CRS("+proj=longlat +datum=WGS84")
 # using http://spatialreference.org/ref/esri/north-america-lambert-conformal-conic/
 lcc_proj4 <- CRS("+proj=lcc +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs ")
 
-# transform to LCC projection
-survey.area <- spTransform(survey.area,CRSobj=lcc_proj4)
+# project using LCC
+survey.area <- spTransform(survey.area, CRSobj=lcc_proj4)
 
 # simplify the object
 survey.area <- data.frame(survey.area@polygons[[1]]@Polygons[[1]]@coords)
-names(survey.area) <- c("x","y")
+names(survey.area) <- c("x", "y")
 ```
-
-Using latitude and longitude when performing spatial smoothing can be problematic when certain smoother bases are used. In particular when bivariate isotropic bases are used the non-isotropic nature of latitude and longitude is inconsistent (moving one degree in one direction is not the same as moving one degree in the other).
 
 ```{r echo=FALSE}
 fig_nums(name="areawithtransects", caption="The survey area with transect lines.", display=FALSE)
@@ -128,7 +138,7 @@ pred_latlong <- spTransform(pred.polys,CRSobj=CRS("+proj=longlat +datum=WGS84"))
 plot(pred_latlong, xlab="Longitude", ylab="Latitude")
 axis(1); axis(2); box()
 
-# plot as proejcted
+# plot as projected
 plot(pred.polys, xlab="Northing", ylab="Easting")
 axis(1); axis(2); box()
 ```
@@ -144,7 +154,7 @@ Here we define a convenience function to generate an appropriate data structure 
 # given the argument fill (the covariate vector to use as the fill) and a name,
 # return a geom_polygon object
 # fill must be in the same order as the polygon data
-grid_plot_obj <- function(fill, name){
+grid_plot_obj <- function(fill, name, sp){
 
   # what was the data supplied?
   names(fill) <- NULL
@@ -152,8 +162,6 @@ grid_plot_obj <- function(fill, name){
   data <- data.frame(fill)
   names(data) <- name
 
-  # pred.polys is the loaded shapefile
-  sp <- pred.polys
   spdf <- SpatialPolygonsDataFrame(sp, data)
   spdf@data$id <- rownames(spdf@data)
   spdf.points <- fortify(spdf, region="id")
@@ -190,7 +198,7 @@ hist(distdata$size,main="",xlab="Cluster size")
 
 # plots of distance vs. cluster size
 plot(distdata$distance, distdata$size, main="", xlab="Distance (m)",
-     ylab="Group size", pch=19, cex=0.5, col=rgb(0.74,0.74,0.74,0.7))
+     ylab="Group size", pch=19, cex=0.5, col=gray(0.7))
 
 # lm fit
 l.dat <- data.frame(distance=seq(0,8000,len=1000))
@@ -198,7 +206,7 @@ lo <- lm(size~distance, data=distdata)
 lines(l.dat$distance, as.vector(predict(lo,l.dat)))
 
 plot(distdata$distance,distdata$beaufort, main="", xlab="Distance (m)",
-     ylab="Beaufort sea state", pch=19, cex=0.5, col=rgb(0.74,0.74,0.74,0.7))
+     ylab="Beaufort sea state", pch=19, cex=0.5, col=gray(0.7))
 ```
 
 `r fig_nums("EDA-plots")`
@@ -207,7 +215,7 @@ plot(distdata$distance,distdata$beaufort, main="", xlab="Distance (m)",
 
 ## Spatial data
 
-Looking separately at the spatial data without thinking about the distances, we can see the distribution of group size in space in `r fig_c("spatialEDA")`, below. Circle size indicates the size of the group in the observation. There are rather large areas with no observations, which might cause our variance estimates for abundance to be rather large. `r fig_c("spatialEDA")` also shows the raw depth data which we will use depth later as an explanatory covariate in our spatial model. The plot shows that we don't seem to have many observations in the very shallow areas near the shore. This should make us skeptical of predictions in those areas.
+Looking separately at the spatial data without thinking about the distances, we can plot the observed group sizes in space (`r fig_c("spatialEDA")`, below). Circle size indicates the size of the group in the observation. There are rather large areas with no observations, which might cause our variance estimates for abundance to be rather large. `r fig_c("spatialEDA")` also shows the depth data which we will use depth later as an explanatory covariate in our spatial model.
 
 ```{r echo=FALSE}
 fig_nums(name="spatialEDA", caption="Plot of depth values over the survey area with transects and observations overlaid. Point size is proportional to the group size for each observation.", display=FALSE)
@@ -215,7 +223,7 @@ fig_nums(name="spatialEDA", caption="Plot of depth values over the survey area w
 
 The following code generates `r fig_c("spatialEDA")`:
 ```{r spatialEDA, fig.cap=""}
-p <- ggplot() + grid_plot_obj(preddata$depth, "Depth") + coord_equal()
+p <- ggplot() + grid_plot_obj(preddata$depth, "Depth", pred.polys) + coord_equal()
 p <- p + labs(fill="Depth",x="x",y="y",size="Group size")
 p <- p + geom_line(aes(x, y, group=Transect.Label), data=segdata)
 p <- p + geom_point(aes(x, y, size=size), data=distdata, colour="red",alpha=I(0.7))
@@ -247,16 +255,20 @@ summary(hr.model)
 ```
 
 ```{r echo=FALSE}
-fig_nums(name="hr-detfct", caption="Plot of the fitted hazard-rate detection function.", display=FALSE)
+fig_nums(name="hr-detfct", caption="Plot of the fitted detection function (left) and goodness of fit plot (right) for the hazard-rate model.", display=FALSE)
 ```
 
 
-The following code generates a plot of the fitted detection function (`r fig_c("hr-detfct")`):
-``` {r hr-detfct, fig.cap="", fig.width=6, fig.height=6}
-plot(hr.model)
+The following code generates a plot of the fitted detection function (`r fig_c("hr-detfct")`) and quantile-quantile plot:
+``` {r hr-detfct, fig.cap="", fig.width=9, fig.height=6, results="hide"}
+par(mfrow=c(1,2))
+plot(hr.model, showpoints=FALSE, pl.den=0, lwd=2)
+ddf.gof(hr.model$ddf)
 ```
 
 `r fig_nums("hr-detfct")`
+
+The quantile-quantile plot show relatively good goodness of fit for the hazard-rate detection function.
 
 
 ## Adding covariates to the detection function
@@ -275,7 +287,6 @@ Here the detection function with covariates does not give a lower AIC than the m
 For brevity, detection function model selection has been omitted here. In practise we would fit many different forms for the detection function (and select a model based on goodness of fit testing and AIC). Later in this document, we demonstrate fitting of a detection function with size as a covariate, but for now we stick to a simple model.
 
 
-
 # Fitting a DSM
 
 Before fitting a `dsm` model, the data must be segmented; this consists of chopping up the transects and attributing counts to each of the segments. As mentioned above, these data have already been segmented.
@@ -283,11 +294,11 @@ Before fitting a `dsm` model, the data must be segmented; this consists of chopp
 
 ## A simple model
 
-We begin with a very simple model. We assume that the number of individuals in each segment are quasi-Poisson distributed and that they are a smooth function of their spatial coordinates (note that the formula is exactly as one would specify to `gam` in `mgcv`). The abundance of clusters/groups rather than individuals can be estimated by setting `group=TRUE` (though we ignore this here). Note we set `method="REML"` to ensure that smooth terms are estimated reliably.
+We begin with a very simple model. We assume that the number of individuals in each segment are quasi-Poisson distributed and that they are a smooth function of their spatial coordinates (note that the formula is exactly as one would specify to `gam` in `mgcv`). By setting `group=TRUE`, the abundance of clusters/groups rather than individuals can be estimated (though we ignore this here). Note we set `method="REML"` to ensure that smooth terms are estimated reliably.
 
 Running the model:
 ```{r}
-mod1 <- dsm(N~s(x,y), hr.model$ddf, segdata, obsdata, method="REML")
+mod1 <- dsm(count~s(x,y), hr.model$ddf, segdata, obsdata, method="REML")
 ```
 We can then obtain a summary of the fitted model:
 ```{r}
@@ -295,7 +306,8 @@ summary(mod1)
 ```
 The exact interpretation of the model summary results can be found in Wood (2006); here we can see various information about the smooth components fitted and general model statistics.
 
-Note though that the adjusted $R^2$ for the model is defined as the proportion of variance explained but the "original" variance used for comparison doesn't include the offset (the area (or effective of the segments). It is therefore not recommended for one to directly interpret the $R^2$ value (see the `summary.gam` manual page for further details).
+We can use the deviance explained to compare between models[^rsqoffset].
+
 
 ```{r echo=FALSE}
 fig_nums(name="visgam1", caption="Plot of the spatial smooth in `mod1`.", display=FALSE)
@@ -304,12 +316,12 @@ fig_nums(name="visgam1", caption="Plot of the spatial smooth in `mod1`.", displa
 
 We can also get a rough idea of what the smooth of space looks like using `vis.gam`:
 ```{r visgam1, fig.cap=""}
-vis.gam(mod1, plot.type="contour", view=c("x","y"), asp=1, type="response", zlim=c(0,280))
+vis.gam(mod1, plot.type="contour", view=c("x","y"), asp=1, type="response", contour.col="black", n.grid=100)
 ```
-
 
 `r fig_nums("visgam1")`
 
+The `type="response"` argument ensures that the plot is on the scale of abundance.
 
 ## Adding another environmental covariate to the spatial model
 
@@ -318,7 +330,7 @@ The data set also contains a `depth` covariate (which we plotted above). We can 
 mod2 <- dsm(N~s(x,y,k=10) + s(depth,k=20), hr.model, segdata, obsdata, method="REML")
 summary(mod2)
 ```
-Here we see a drop in deviance explained and $R^2$, so perhaps this model is not as useful as the first. We discuss setting the `k` parameter in [Model checking], below.
+Here we see a drop in deviance explained, so perhaps this model is not as useful as the first. We discuss setting the `k` parameter in [Model checking], below.
 
 Setting `select=TRUE` here would impose extra shrinkage terms on each smooth in the model (allowing smooth terms to be removed from the model during fitting; see `?gam` for more information). This is not particularly useful here, so we do not include it. However when there are many environmental predictors is in the model this can be a good way (along with looking at $p$-values) to perform term selection.
 
@@ -338,7 +350,7 @@ Omitting the argument `select` in the call to `plot` will plot each of the smoot
 
 ## Spatial models when there are covariates in the detection function
 
-The code to fit the DSM when there are covariates in the detection function is similar to the other models, above. However since the detection function has observation-level covariates, we change the response to be `abundance.est` so the abundances are estimated per segment and change the name of the detection function model object:
+The code to fit the DSM when there are covariates in the detection function is similar to the other models, above. However since the detection function has observation-level covariates, we must estimate the abundance per segment using a Horvitz-Thompson-like estimator before modelling, so we change the response to be `abundance.est`:
 ``` {r cache=TRUE}
 mod5 <- dsm(abundance.est~s(x,y), hr.beau.model, segdata, obsdata, method="REML")
 ```
@@ -366,16 +378,14 @@ Often the quasi-Poisson distribution doesn't give adequate flexibility and doesn
 
 ### Tweedie
 
-Response distributions other than the quasi-Poisson can be used, for example the Tweedie distribution. The Tweedie distribution is available in `dsm` via two different `family=` options.
-
-  1. If the `family=Tweedie(p=...)` is used, then the `p` parameter must be specified. The choice of `p` is only sensitive to the first decimal place, so a quick search can be performed by simply comparing the GCV or REML score of the resulting models. As well as looking at the GCV or REML score of the model to assess the value of `p` we can also look at a plot of the square root of the absolute value of the residuals versus the fitted values. In general, a "good" value of `p` can be found by testing values of `p` between 1.1 and 1.9 and looking for the best GCV and "flattest" plot.
-  2. Instead one may use `family=tw()`, which will automatically estimate the Tweedie parameter. This option is recommended.
-
+Response distributions other than the quasi-Poisson can be used, for example the Tweedie distribution. The Tweedie distribution is available in `dsm` by setting `family=tw()`.
 
 ```{r tweedie-fit}
-mod3 <- dsm(N~s(x,y), hr.model, segdata, obsdata, family=tw(), method="REML")
+mod3 <- dsm(count~s(x,y), hr.model, segdata, obsdata, family=tw(), method="REML")
 summary(mod3)
 ```
+
+
 
 ### Negative binomial
 
@@ -408,7 +418,7 @@ Note that the [`soap_checker` script available here](https://github.com/dill/soa
 We can run a model with both the `depth` covariate along with a spatial (soap film) smooth. Note that the `k` argument now refers to the complexity of the boundary smooth in the soap film, and the complexity of the film is controlled by the knots given in the `xt` argument.
 
 ``` {r soap-fit, cache=TRUE}
-mod4<-dsm(N~s(x, y, bs="so", k=15, xt=list(bnd=list(survey.area))) +
+mod4<-dsm(count~s(x, y, bs="so", k=15, xt=list(bnd=list(survey.area))) +
             s(depth),
           family=tw(), method="REML",
           hr.model, segdata.soap, obsdata, knots=soap.knots)
@@ -424,7 +434,7 @@ We can use a generalized mixed model (GAMM; Wood, 2006) to include correlation b
 ```{r mod6, cache=TRUE}
 segdata$sg.id <- as.numeric(sub("\\d+-","",segdata$Sample.Label))
 segdata$tr.id <- as.numeric(segdata$Transect.Label)
-mod6<-dsm(N~s(x,y), hr.model$ddf, segdata, obsdata,engine="gamm",correlation=corAR1(form=~sg.id|tr.id), method="REML")
+mod6<-dsm(count~s(x,y), hr.model$ddf, segdata, obsdata,engine="gamm",correlation=corAR1(form=~sg.id|tr.id), method="REML")
 ```
 
 GAMMs usually take considerably longer to fit than GAMs, so it's usually start with a GAM first, select smooth terms and response distribution before starting to fit GAMMs.
@@ -433,6 +443,8 @@ The object returned is part `lme` (for the random effects) and part `gam` (for t
 ```{r}
 summary(mod6$gam)
 ```
+
+Note that the deviance explained is not reported for the GAMM.
 
 More information on `lme` can be found in Pinheiro and Bates (2000) and Wood (2006).
 
@@ -457,6 +469,7 @@ gam.check(mod1)
 
 These show that there is some deviation in the Q-Q plot. The "line" of points in the plot of the residuals vs. linear predictor plot corresponds to the zeros in the data.
 
+Note that as well as the plots, `gam.check` also produces information about the model fitting. Of particular interest to us is the last few lines that tell us about the basis size, see [Smoother complexity], below.
 
 ```{r echo=FALSE}
 fig_nums(name="mod3-check", caption="Diagnostic plots for `mod3`.", display=FALSE)
@@ -478,7 +491,7 @@ Further guidance on interpreting `gam.check` output can be found in Wood (2006).
 
 In the top right panel of the above `gam.check` plots the residuals vs. linear predictor plot includes a odd line of predictions. These are an artifact of the link function, showing the exact zeros in the data. These can be misleading and distracting, making is difficult to see whether residuals show heteroskedasticity
 
-Randomised quantile residuals (Dunn and Smyth, 1996) avoid this issue by transforming the residuals to be exactly normally distributed. This makes the residuals vs. linear predictor plot much easier to interpret. These plots can be produced using `rqgam.check` in `dsm`.
+Randomised quantile residuals (Dunn and Smyth, 1996) avoid this issue by transforming the residuals to be exactly normally distributed. This makes the residuals vs. linear predictor plot much easier to interpret as it therefore doesn't include the artifacts generated by the link function. These plots can be produced using `rqgam.check` in `dsm`. Note that in general, plots other than "Resids vs. linear pred." should be interpreted with caution.
 
 ```{r echo=FALSE}
 fig_nums(name="mod3-rqcheck", caption="Randomised quantile residual diagnostic plots for `mod3`.", display=FALSE)
@@ -553,6 +566,8 @@ We can then use the resulting `data.frame` to build a table of results using the
 kable(mod_results, col.names=c("Model name", "Description", "Deviance explained"))
 ```
 
+Note the `NA` value for the GAMM (`mod6`), this is because the deviance is not reported for these models.
+
 # Abundance estimation
 
 Once a model has been checked and selected, we can make predictions over the grid and calculate abundance. The offset is stored in the `area` column[^offsetcorrection].
@@ -568,7 +583,7 @@ fig_nums(name="mod1-preds", caption="Predicted density surface for `mod1`.", dis
 `r fig_c("mod1-preds")` shows a map of the predicted abundance. We use the `grid_plot_obj` helper function to assign the predictions to grid cells (polygons).
 
 ```{r mod1-preds, fig.cap=""}
-p <- ggplot() + grid_plot_obj(mod1.pred, "Abundance") + coord_equal() +gg.opts
+p <- ggplot() + grid_plot_obj(mod1.pred, "Abundance", pred.polys) + coord_equal() +gg.opts
 p <- p + geom_path(aes(x=x, y=y),data=survey.area)
 p <- p + labs(fill="Abundance")
 print(p)
@@ -590,7 +605,7 @@ fig_nums(name="mod2-preds", caption="Predicted density surface for `mod2`.", dis
 
 ```{r mod2-preds, fig.cap=""}
 mod2.pred <- predict(mod2, preddata, preddata$area)
-p <- ggplot() + grid_plot_obj(mod2.pred, "Abundance") + coord_equal() +gg.opts
+p <- ggplot() + grid_plot_obj(mod2.pred, "Abundance", pred.polys) + coord_equal() +gg.opts
 p <- p + geom_path(aes(x=x, y=y), data=survey.area)
 p <- p + labs(fill="Abundance")
 print(p)
@@ -608,8 +623,7 @@ sum(mod2.pred)
 
 Obviously point estimates of abundance are important, but we should also calculate uncertainty around these abundance estimates. Fortunately `dsm` provides functions to perform these calculations and display the resulting uncertainty estimates.
 
-We can use the approach of Williams *et al* (2011), which accounts for uncertainty in detection function estimation in this situation where we have no covariates in the detection function.
-
+We can use the approach of Williams *et al* (2011), which allows us to incorporate both detection function uncertainty and spatial model (GAM) uncertainty in our estimates of the variance.
 ```{r mod1-varprop, cache=TRUE}
 preddata.varprop <- split(preddata,1:nrow(preddata))
 mod1.varprop <- dsm.var.prop(mod1, pred.data=preddata.varprop,
@@ -621,18 +635,21 @@ summary(mod1.varprop)
 ```
 The section titled `Quantiles of differences between fitted model and variance model` can be used to check the variance model does not have major problems (values much less than 1 indicate no issues).
 
-Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams *et al* (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`), or use the moving block bootstrap (`dsm.var.movblk`). Other than this, all of the above functions can be used.
+This method will only work when there are either no covariates in the detection function or when those that are there only vary at the scale of segments (e.g. the Beaufort sea state varies per segment so would be fine to include, but the observer may vary within transect for multiple observer surveys, so would not be appropriate to include).
+
+Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams *et al* (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`) which simply sums the squared coefficients of variation to get a total coefficient of variation (and therefore assumes that the detection process and spatial process are independent). There are no restrictions on the form of the detection function when using `dsm.var.gam`.
 
 
 ```{r echo=FALSE}
-fig_nums(name="mod1varplot", caption="Plot of the coefficient of variation for the study area with transect lines and observations overlaid.", display=FALSE)
+fig_nums(name="mod1varplot", caption="Plot of the coefficient of variation for the study area with transect lines and observations overlaid. Note the increase in CV away from the transect lines.", display=FALSE)
 ```
 
 We can also make a plot of the CVs using the following code (`r fig_c("mod1varplot")`).
 ```{r mod1varplot, fig.cap=""}
 p <- ggplot() + grid_plot_obj(sqrt(mod1.varprop$pred.var)/unlist(mod1.varprop$pred),
-                              "CV") + coord_equal() +gg.opts
+                              "CV", pred.polys) + coord_equal() +gg.opts
 p <- p + geom_path(aes(x=x, y=y),data=survey.area)
+p <- p + geom_line(aes(x, y, group=Transect.Label), data=segdata)
 print(p)
 ```
 
@@ -652,11 +669,13 @@ This document has outlined an analysis of spatially-explicit distance sampling d
 
 # References
 
- * Bivand, RS, E Pebesma, and V Gomez-Rubio. Applied Spatial Data Analysis with R, Springer Science & Business Media, 2013.
- * Hedley, SL & Buckland, ST (2004) Spatial models for line transect sampling. Journal of Agricultural, Biological, and Environmental Statistics, 9, 181–199.
- * Miller, DL, ML Burt, EA Rexstad, and L Thomas. Spatial Models for Distance Sampling Data: Recent Developments and Future Directions. Methods in Ecology and Evolution 4(11) (2013): 1001–10. doi:10.1111/2041-210X.12105.
- * Pinheiro, JC, and Bates, DM (2000) Mixed-effects models in S and S-PLUS, Springer.
- * Williams, R, Hedley, SL, Branch, TA, Bravington, MV, Zerbini, AN & Findlay, KP (2011) Chilean blue whales as a case study to illustrate methods to estimate abundance and evaluate conservation status of rare species. Conservation Biology, 25, 526–535.
- * Wood, SN (2006) Generalized Additive Models: an introduction with R. Chapman and Hall/CRC Press.
+ * Bivand, RS, E Pebesma, and V Gomez-Rubio (2013). Applied Spatial Data Analysis with R, Springer Science & Business Media.
+ * Hedley, SL and Buckland, ST (2004). Spatial models for line transect sampling. Journal of Agricultural, Biological, and Environmental Statistics, 9, 181–199.
+ * Miller, DL, ML Burt, EA Rexstad, and L Thomas (2013). Spatial models for distance sampling data: recent developments and future directions. Methods in Ecology and Evolution 4(11): 1001–10.
+ * Pinheiro, JC, and Bates, DM (2000). Mixed-effects models in S and S-PLUS, Springer.
+ * Williams, R, Hedley, SL, Branch, TA, Bravington, MV, Zerbini, AN and Findlay, KP (2011). Chilean blue whales as a case study to illustrate methods to estimate abundance and evaluate conservation status of rare species. Conservation Biology, 25, 526–535.
+ * Wood, SN (2006). Generalized Additive Models: an introduction with R. Chapman and Hall/CRC Press.
 
 [^offsetcorrection]: An earlier version of this vignette incorrectly stated that the areas of the prediction cells were 444km$^2$. This has been corrected. Thanks to Phil Bouchet for pointing this out.
+[^MGET]: These operations can be performed in R using the `sp` and `rgeos` packages. It may, however, be easier to perform these operations in GIS such as ArcGIS -- in which case the MGET Toolbox may be useful.
+[^rsqoffset]: Note though that the adjusted $R^2$ for the model is defined as the proportion of variance explained but the "original" variance used for comparison doesn't include the offset (the area (or effective of the segments). It is therefore not recommended for one to directly interpret the $R^2$ value (see the `summary.gam` manual page for further details).

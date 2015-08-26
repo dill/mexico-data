@@ -139,8 +139,8 @@ pred.t <- spTransform(pred,CRSobj=lcc_proj4)
 
 pred.polys <- pp.t
 
-preddata <- data.frame(latitude  = pred@coords[,1],
-                       longitude = pred@coords[,2],
+preddata <- data.frame(latitude  = pred@coords[,2],
+                       longitude = pred@coords[,1],
                        x         = pred.t@coords[,1],
                        y         = pred.t@coords[,2],
                        depth     = as.double(pred.d[,8]),

@@ -44,6 +44,14 @@ gg.opts <- theme(panel.grid.major=element_blank(),
 set.seed(11123)
 ```
 
+In order to run this vignette, you'll need to install a few R packages. This can be done via the following call to `install.packages`:
+```{r eval=FALSE}
+install.packages(c("dsm", "Distance", "knitr", "captioner", "ggplot2", "rgdal",
+                   "maptools", "plyr"))
+```
+
+
+
 # The data
 
 ## Observation and segment data

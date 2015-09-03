@@ -159,8 +159,14 @@ preddata <- data.frame(latitude  = pred@coords[,2],
 
 obsdata <- obsdata[obsdata$size>0,]
 
+mexdolphins <- list(segdata     = segdata,
+                    obsdata     = obsdata,
+                    distdata    = distdata,
+                    preddata    = preddata,
+                    survey.area = survey.area,
+                    pred.polys  = pred.polys)
 # save everything to file
-save(segdata, obsdata, distdata, preddata, survey.area, pred.polys, file="../data/dolphins.RData")
+save(mexdolphins, file="../data/dolphins.RData")
 
 
 # write the predictions as shapefiles

@@ -292,7 +292,7 @@ summary(detfc.hr.beau)
 ```
 Here the detection function with covariates does not give a lower AIC than the model without covariates (`r round(detfc.hr.beau$ddf$criterion,2)` vs. `r round(detfc.hr.null$ddf$criterion,2)` for the hazard-rate model without covariates). Looking back to the bottom-right panel of `r fig_c("EDA-plots")`, we can see there is not a discernible pattern in the plot of Beaufort vs distance.
 
-For brevity, detection function model selection has been omitted here. In practise we would fit many different forms for the detection function (and select a model based on goodness of fit testing and AIC). Later in this document, we demonstrate fitting of a detection function with size as a covariate, but for now we stick to a simple model.
+For brevity, detection function model selection has been omitted here. In practise we would fit many different forms for the detection function (and select a model based on goodness of fit testing and AIC).
 
 
 # Fitting a DSM

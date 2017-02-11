@@ -1,7 +1,7 @@
 ---
 title: 'Example `dsm` analysis: pantropical dolphins in the Gulf of Mexico'
 author: "David L. Miller"
-date: "August 2015"
+date: "February 2017"
 output:
   pdf_document:
     toc: yes
@@ -56,10 +56,9 @@ install.packages(c("dsm", "Distance", "knitr", "captioner", "ggplot2", "rgdal",
 
 ## Observation and segment data
 
-All of the data for this analysis has been nicely pre-formatted and is shipped with `dsm`. Loading that data, we can see that we have four data frames, the first few lines of each are shown:
+All of the data for this analysis has been nicely pre-formatted and is shipped with `dsm`. Loading that data, we can see that we have four `data.frame`s, the first few lines of each are shown:
 ```{r loaddata}
 data(mexdolphins)
-attach(mexdolphins)
 ```
 `segdata` holds the segment data: the transects have already been "chopped" into segments.
 ```{r head-segdata}
@@ -255,7 +254,7 @@ library(Distance)
 
 We can then fit a detection function with hazard-rate key with no adjustment terms:
 ```{r hrmodel}
-detfc.hr.null<-ds(distdata, max(distdata$distance), key="hr", adjustment=NULL)
+detfc.hr.null <- ds(distdata, max(distdata$distance), key="hr", adjustment=NULL)
 ```
 Calling `summary` gives us information about parameter estimates, probability of detection, AIC, etc:
 ```{r hrmodelsummary}
@@ -269,9 +268,9 @@ fig_nums(name="hr-detfct", caption="Plot of the fitted detection function (left)
 
 The following code generates a plot of the fitted detection function (`r fig_c("hr-detfct")`) and quantile-quantile plot:
 ``` {r hr-detfct, fig.cap="", fig.width=9, fig.height=6, results="hide"}
-par(mfrow=c(1,2))
+layout(matrix(c(1, 2), 1, 2), width=c(1.5, 1))
 plot(detfc.hr.null, showpoints=FALSE, pl.den=0, lwd=2)
-ddf.gof(detfc.hr.null$ddf)
+ds.gof(detfc.hr.null)
 ```
 
 `r fig_nums("hr-detfct")`
@@ -287,7 +286,7 @@ detfc.hr.beau<-ds(distdata, max(distdata$distance), formula=~as.factor(beaufort)
                   key="hr", adjustment=NULL)
 ```
 Again looking at the `summary`,
-```{r hrcovdfsummary}
+```{r hrcovdfsummary, cache=TRUE}
 summary(detfc.hr.beau)
 ```
 Here the detection function with covariates does not give a lower AIC than the model without covariates (`r round(detfc.hr.beau$ddf$criterion,2)` vs. `r round(detfc.hr.null$ddf$criterion,2)` for the hazard-rate model without covariates). Looking back to the bottom-right panel of `r fig_c("EDA-plots")`, we can see there is not a discernible pattern in the plot of Beaufort vs distance.

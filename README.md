@@ -8,6 +8,8 @@ This repository contains data from NOAA surveys with observations of pan-tropica
 
 A complete example analysis (and description of the data) is provided here and at [http://distancesampling.org/R/vignettes/mexico-analysis.html](http://distancesampling.org/R/vignettes/mexico-analysis.html).
 
+Note that the compiled HTML here has been run using the latest versions of the `Distance`, `mrds` and `dsm` packages available on github. Ensure you have the latest versions before trying out this analysis.
+
 # Data overview
 
 Data from a combination of several NOAA shipboard surveys conducted on pan-tropical spotted dolphins in the Gulf of Mexico. 47 observations of groups of dolphins. The group size was recorded, as well as the Beaufort sea state at the time of the observation. Coordinates for each observation and bathymetry data were also available as covariates for the analysis.

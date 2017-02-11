@@ -21,7 +21,6 @@ lcc_proj4 <- CRS("+proj=lcc +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0
 #lon0 <- -88.31951
 #lat0 <- 27.01594
 
-
 # create obsdata
 # * ``object`` - object id
 # * ``Segment.Label`` - the segment the observation occurred in
@@ -31,8 +30,7 @@ lcc_proj4 <- CRS("+proj=lcc +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0
 # get rid of the column titles put there by Distance
 obs <- obs[6:nrow(obs),]
 
-
-
+# make the data.frame
 obsdata <- data.frame(
                       object=1:nrow(obs),
                       Sample.Label=obs[,13],
@@ -159,15 +157,18 @@ preddata <- data.frame(latitude  = pred@coords[,2],
 
 obsdata <- obsdata[obsdata$size>0,]
 
-mexdolphins <- list(segdata     = segdata,
-                    obsdata     = obsdata,
-                    distdata    = distdata,
-                    preddata    = preddata,
-                    survey.area = survey.area,
-                    pred.polys  = pred.polys)
-# save everything to file
-save(mexdolphins, file="../data/dolphins.RData")
+#mexdolphins <- list(segdata     = segdata,
+#                    obsdata     = obsdata,
+#                    distdata    = distdata,
+#                    preddata    = preddata,
+#                    survey.area = survey.area,
+#                    pred.polys  = pred.polys)
+## save everything to file
+#save(mexdolphins, file="../data/dolphins.RData")
 
+## save everything to file
+save(segdata, obsdata, distdata, preddata, survey.area, pred.polys,
+     file="../data/dolphins.RData")
 
 # write the predictions as shapefiles
 row.names(preddata) <- as.character(1:nrow(preddata))

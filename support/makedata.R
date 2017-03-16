@@ -6,12 +6,12 @@ library(plyr)
 options(stringsAsFactors=FALSE)
 
 
-obs<-read.csv("../data/csv/mexico-observation.csv",header=FALSE)
-seg<-read.csv("../data/csv/mexico-segment.csv",header=FALSE)
+obs <- read.csv("../data/csv/mexico-observation.csv", header=FALSE)
+seg <- read.csv("../data/csv/mexico-segment.csv", header=FALSE)
 #tran<-read.csv("../data/csv/mexico-transect.csv",header=FALSE)
-pred <- readShapeSpatial("../data/DProject/Dolphins.dat/Predict")
-pred.d <- read.table("../data/csv/mexico-pred.txt",skip=5)
-survey.area <- readShapeSpatial("../data/DProject/Dolphins.dat/Study_Ar")
+pred <- readOGR(dsn="../data/DProject/Dolphins.dat/Predict.shp")
+pred.d <- read.table("../data/csv/mexico-pred.txt", skip=5)
+survey.area <- readOGR(dsn="../data/DProject/Dolphins.dat/Study_Ar.shp")
 
 # proj 4 string
 # using http://spatialreference.org/ref/esri/north-america-lambert-conformal-conic/

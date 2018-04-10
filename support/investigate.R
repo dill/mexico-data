@@ -1,3 +1,6 @@
+# check differences between data
+# based on makedata.R
+
 library(dsm)
 library(rgdal)
 library(maptools)
@@ -13,8 +16,6 @@ seg <- read.csv("../data/csv/mexico-segment.csv", header=FALSE)
 pred <- readOGR(dsn="../data/DProject/Dolphins.dat/Predict.shp")
 pred.d <- read.table("../data/csv/mexico-pred.txt", skip=5)
 survey.area <- readOGR(dsn="../data/DProject/Dolphins.dat/Study_Ar.shp")
-# get additional segment data
-moresegdat <- read.csv("../data/GM_ocncetship9601_200_trackpoints.csv")
 
 # proj 4 string
 # using http://spatialreference.org/ref/esri/north-america-lambert-conformal-conic/
@@ -75,6 +76,11 @@ segdata <- data.frame(longitude      = as.numeric(seg[,16]),
                      )
 
 # get additional segment data -- Beaufort per segment
+
+# get additional segment data
+moresegdat <- read.csv("../data/GM_ocncetship9601_200_trackpoints.csv")
+moresegdat$dt <- ymd_hms(moresegdat$t)
+
 # project
 msegsp <- SpatialPoints(cbind(as.numeric(moresegdat$Lon),
                               as.numeric(moresegdat$Lat)))
@@ -84,7 +90,8 @@ moresegdat$x <- msegsp.t@coords[, 1]
 moresegdat$y <- msegsp.t@coords[, 2]
 
 # setup columns to put some data in
-segdata$beaufort <- NA
+segdata$Beaufort <- NA
+segdata$dt <- NA
 
 # loop over the transects
 for(transect in unique(segdata$Transect.Label)){
@@ -102,10 +109,14 @@ for(transect in unique(segdata$Transect.Label)){
              diag=TRUE, upper=TRUE)
   DD <- as.matrix(DD)
   DD <- DD[1:nrow(this_dat), (nrow(this_dat)+1):nrow(DD)]
+  this_dat$Beaufort <- this_mseg$Beaufort[apply(DD, 1, which.min)]
 
   # but that in the data...
-  segdata[segdata$Transect.Label == transect, ]$beaufort <-
+  segdata[segdata$Transect.Label == transect, ]$Beaufort <-
     this_mseg$Beaufort[apply(DD, 1, which.min)]
+  # along with the datetime to check things match
+  segdata[segdata$Transect.Label == transect, ]$dt <-
+    this_mseg$dt[apply(DD, 1, which.min)]
 
   # clean up
   rm(DD); gc()
@@ -122,6 +133,9 @@ distdata$detected <- rep(1, nrow(distdata))
 ## get other data
 distdata$beaufort <- as.numeric(obs[,22][obsdata$size>0])
 
+
+
+
 ## include the lat/long but just for plotting
 distdata$latitude <- as.numeric(obs[,15][obsdata$size>0])
 distdata$longitude <- as.numeric(obs[,16][obsdata$size>0])
@@ -137,99 +151,129 @@ distdata$x <- distsp.t@coords[, 1]
 distdata$y <- distsp.t@coords[, 2]
 
 
-
 ## check that the Beaufort was right
 distdata$old_beaufort <- distdata$beaufort
 distdata$beaufort <- NULL
-#aa <- join(distdata, segdata, by="Sample.Label")
-#plot(aa[,c("old_beaufort","beaufort")])
-#abline(a=0,b=1)
-
-# two observations have different beaufort, switch them over
-distdata$beaufort <- distdata$old_beaufort
-distdata$old_beaufort <- NULL
+aa <- join(distdata, segdata, by="Sample.Label")
+plot(aa[,c("old_beaufort","beaufort")])
+abline(a=0,b=1)
 
 
-#### prediction data
-
-proj4string(pred) <- CRS("+proj=longlat +datum=WGS84")
-
-# grid spacing
-grid.eps <- 0.16666667/2
-
-# build some polygons
-ID <- 0
-pp <- alply(pred@coords, 1, function(x){
-
-  this.poly <- rbind(c(x[1]+grid.eps,x[2]+grid.eps),
-                     c(x[1]+grid.eps,x[2]-grid.eps),
-                     c(x[1]-grid.eps,x[2]-grid.eps),
-                     c(x[1]-grid.eps,x[2]+grid.eps),
-                     c(x[1]+grid.eps,x[2]+grid.eps))
-
-  ID <<- ID + 1
-  Polygons(list(Polygon(this.poly)),ID=as.character(ID))
-})
-
-# make polygon object, give it a projection
-pp <- SpatialPolygons(pp)
-proj4string(pp) <- CRS("+proj=longlat +datum=WGS84")
+apply(aa[,c("Beaufort","beaufort")], 1, diff)
+subset(moresegdat, Year_==1996 & Month_==5 & Day_==15)
+aa[aa$beaufort!=aa$Beaufort,]
 
 
-# convert projection to lcc
-# for the squares
-pp.t <- spTransform(pp,CRSobj=lcc_proj4)
-# for points
-pred.t <- spTransform(pred,CRSobj=lcc_proj4)
-
-# test plot
-#par(mfrow=c(1,2))
-#plot(pred, pch=19,cex=0.2)
-#plot(pp,add=TRUE)
-#plot(pred.t, pch=19,cex=0.2)
-#plot(pp.t,add=TRUE)
-
-pred.polys <- pp.t
-
-preddata <- data.frame(latitude  = pred@coords[,2],
-                       longitude = pred@coords[,1],
-                       x         = pred.t@coords[,1],
-                       y         = pred.t@coords[,2],
-                       depth     = as.double(pred.d[,8]),
-                       area      = ldply(pp.t@polygons[[1]]@Polygons,
-                                   function(x) x@area)[[1]])
+library(RColorBrewer)
+YlOrBr <- brewer.pal(6, "Accent")
 
 
-#preddata$width <- 1000*
-#(lr.tmp$km.e[(length(preddata$latitude)+1):length(lr.tmp$km.e)]-
-#lr.tmp$km.e[1:length(preddata$latitude)])
-#preddata$height <- 1000*
-#(tb.tmp$km.n[(length(preddata$latitude)+1):length(tb.tmp$km.n)]-
-#tb.tmp$km.n[1:length(preddata$latitude)])
+plot_check <- function(transect){
+  # adapted from above
+  this_dat <- segdata[segdata$Transect.Label == transect, ]
+  yy <- as.numeric(sub("(\\d{4})(\\d{2})(\\d{2})", "\\1", transect))
+  mm <- as.numeric(sub("(\\d{4})(\\d{2})(\\d{2})", "\\2", transect))
+  dd <- as.numeric(sub("(\\d{4})(\\d{2})(\\d{2})", "\\3", transect))
+  this_mseg <- subset(moresegdat, Year_==yy & Month_==mm & Day_==dd)
+  DD <- dist(rbind(this_dat[, c("x","y")],
+                   this_mseg[, c("x","y")]),
+             diag=TRUE, upper=TRUE)
+  DD <- as.matrix(DD)
+  DD <- DD[1:nrow(this_dat), (nrow(this_dat)+1):nrow(DD)]
 
-#rm(lr, tb, lr.tmp, tb.tmp, pred.tmp)
 
-obsdata <- obsdata[obsdata$size>0,]
+  plot(this_dat[,c("x","y")], asp=1, main=transect)
+  points(this_mseg[,c("x","y")][apply(DD, 1, which.min),], pch=4)
+  points(this_mseg[,c("x","y")], pch=19, cex=0.8, col=YlOrBr[this_mseg$Beaufort])
+  points(aa[aa$beaufort!=aa$Beaufort,][,c("x","y")], pch=19, cex=0.4)
+  points(moresegdat[,c("x","y")], pch=19, cex=0.2)
 
-#mexdolphins <- list(segdata     = segdata,
-#                    obsdata     = obsdata,
-#                    distdata    = distdata,
-#                    preddata    = preddata,
-#                    survey.area = survey.area,
-#                    pred.polys  = pred.polys)
-## save everything to file
-#save(mexdolphins, file="../data/dolphins.RData")
+  legend(mean(this_mseg$x), quantile(this_mseg$y)[4], 1:6, pch=19, col=YlOrBr)
+}
+par(mfrow=c(1, 2))
+plot_check("19960515")
+plot_check("19960531")
 
-## save everything to file
-save(segdata, obsdata, distdata, preddata, survey.area, pred.polys,
-     file="../data/dolphins.RData")
-
-# write the predictions as shapefiles
-row.names(preddata) <- as.character(1:nrow(preddata))
-pp.df <- SpatialPolygonsDataFrame(pp.t, preddata)
-writeSpatialShape(pp.df, "prediction-grid")
-
-proj4string(survey.area) <- CRS("+proj=longlat +datum=WGS84")
-survey.area <- spTransform(survey.area,CRSobj=lcc_proj4)
-writeSpatialShape(survey.area,"survey-area")
-
+##### prediction data
+#
+#proj4string(pred) <- CRS("+proj=longlat +datum=WGS84")
+#
+## grid spacing
+#grid.eps <- 0.16666667/2
+#
+## build some polygons
+#ID <- 0
+#pp <- alply(pred@coords, 1, function(x){
+#
+#  this.poly <- rbind(c(x[1]+grid.eps,x[2]+grid.eps),
+#                     c(x[1]+grid.eps,x[2]-grid.eps),
+#                     c(x[1]-grid.eps,x[2]-grid.eps),
+#                     c(x[1]-grid.eps,x[2]+grid.eps),
+#                     c(x[1]+grid.eps,x[2]+grid.eps))
+#
+#  ID <<- ID + 1
+#  Polygons(list(Polygon(this.poly)),ID=as.character(ID))
+#})
+#
+## make polygon object, give it a projection
+#pp <- SpatialPolygons(pp)
+#proj4string(pp) <- CRS("+proj=longlat +datum=WGS84")
+#
+#
+## convert projection to lcc
+## for the squares
+#pp.t <- spTransform(pp,CRSobj=lcc_proj4)
+## for points
+#pred.t <- spTransform(pred,CRSobj=lcc_proj4)
+#
+## test plot
+##par(mfrow=c(1,2))
+##plot(pred, pch=19,cex=0.2)
+##plot(pp,add=TRUE)
+##plot(pred.t, pch=19,cex=0.2)
+##plot(pp.t,add=TRUE)
+#
+#pred.polys <- pp.t
+#
+#preddata <- data.frame(latitude  = pred@coords[,2],
+#                       longitude = pred@coords[,1],
+#                       x         = pred.t@coords[,1],
+#                       y         = pred.t@coords[,2],
+#                       depth     = as.double(pred.d[,8]),
+#                       area      = ldply(pp.t@polygons[[1]]@Polygons,
+#                                   function(x) x@area)[[1]])
+#
+#
+##preddata$width <- 1000*
+##(lr.tmp$km.e[(length(preddata$latitude)+1):length(lr.tmp$km.e)]-
+##lr.tmp$km.e[1:length(preddata$latitude)])
+##preddata$height <- 1000*
+##(tb.tmp$km.n[(length(preddata$latitude)+1):length(tb.tmp$km.n)]-
+##tb.tmp$km.n[1:length(preddata$latitude)])
+#
+##rm(lr, tb, lr.tmp, tb.tmp, pred.tmp)
+#
+#obsdata <- obsdata[obsdata$size>0,]
+#
+##mexdolphins <- list(segdata     = segdata,
+##                    obsdata     = obsdata,
+##                    distdata    = distdata,
+##                    preddata    = preddata,
+##                    survey.area = survey.area,
+##                    pred.polys  = pred.polys)
+### save everything to file
+##save(mexdolphins, file="../data/dolphins.RData")
+#
+### save everything to file
+#save(segdata, obsdata, distdata, preddata, survey.area, pred.polys,
+#     file="../data/dolphins.RData")
+#
+## write the predictions as shapefiles
+#row.names(preddata) <- as.character(1:nrow(preddata))
+#pp.df <- SpatialPolygonsDataFrame(pp.t, preddata)
+#writeSpatialShape(pp.df, "prediction-grid")
+#
+#proj4string(survey.area) <- CRS("+proj=longlat +datum=WGS84")
+#survey.area <- spTransform(survey.area,CRSobj=lcc_proj4)
+#writeSpatialShape(survey.area,"survey-area")
+#

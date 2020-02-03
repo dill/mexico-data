@@ -3,8 +3,6 @@ title: 'Example `dsm` analysis: pantropical dolphins in the Gulf of Mexico'
 author: "David L. Miller"
 date: "February 2017"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     number_sections: yes
     toc: yes
@@ -39,8 +37,8 @@ library(ggplot2)
 
 # plotting options
 gg.opts <- theme(panel.grid.major=element_blank(),
-                panel.grid.minor=element_blank(),
-                panel.background=element_blank())
+                 panel.grid.minor=element_blank(),
+                 panel.background=element_blank())
 
 # make the results reproducible
 set.seed(11123)
@@ -342,15 +340,15 @@ Here we see a drop in deviance explained, so perhaps this model is not as useful
 Setting `select=TRUE` here (as an argument to `gam`) would impose extra shrinkage terms on each smooth in the model (allowing smooth terms to be removed from the model during fitting; see `?gam` for more information). This is not particularly useful here, so we do not include it. However when there are many environmental predictors is in the model this can be a good way (along with looking at $p$-values) to perform term selection.
 
 ```{r echo=FALSE}
-fig_nums(name="dsm.xy.depth-depth", caption="Plot of the smooth of depth in `dsm.xy.depth`. This \"hockey stick\" shaped smooth indicates that there is not much information in depth after 500m.", display=FALSE)
+fig_nums(name="dsm-xy-depth-depth", caption="Plot of the smooth of depth in `dsm.xy.depth`. This \"hockey stick\" shaped smooth indicates that there is not much information in depth after 500m.", display=FALSE)
 ```
 
-Simply calling `plot` on the model object allows us to look at the relationship between depth and the linear predictor (shown in `r fig_c("dsm.xy.depth-depth")`):
-```{r dsm.xy.depth-depth, fig.cap=""}
+Simply calling `plot` on the model object allows us to look at the relationship between depth and the linear predictor (shown in `r fig_c("dsm-xy-depth-depth")`):
+```{r dsm-xy-depth-depth, fig.cap=""}
 plot(dsm.xy.depth, select=2)
 ```
 
-`r fig_nums("dsm.xy.depth-depth")`
+`r fig_nums("dsm-xy-depth-depth")`
 
 Omitting the argument `select` in the call to `plot` will plot each of the smooth terms, one at a time.
 
@@ -435,29 +433,6 @@ summary(dsm.xy.tweedie.soap)
 ```
 
 
-
-### Correlation structure
-
-We can use a generalized mixed model (GAMM; Wood, 2006) to include correlation between the segments within each transect. First we re-code the sample labels and transect labels as numeric variables, then include them in the model as part of the `correlation` argument (segments are nested inside the transects). For the sake of example we use an AR1 (lag 1 autocorrelation) correlation structure (though the correlogram did not indicate we had issues with residual autocorrelation, we show it here for illustrative purposes).
-
-```{r dsm.xy.gamm, cache=TRUE}
-segdata$sg.id <- as.numeric(sub("\\d+-","",segdata$Sample.Label))
-segdata$tr.id <- as.numeric(segdata$Transect.Label)
-dsm.xy.gamm<-dsm(count~s(x,y), detfc.hr.null, segdata, obsdata,engine="gamm",correlation=corAR1(form=~sg.id|tr.id), method="REML")
-```
-
-GAMMs usually take considerably longer to fit than GAMs, so it's usually start with a GAM first, select smooth terms and response distribution before starting to fit GAMMs.
-
-The object returned is part `lme` (for the random effects) and part `gam` (for the smooth terms). Looking at the `summary()` for the `gam` part of the model:
-```{r}
-summary(dsm.xy.gamm$gam)
-```
-
-Note that the deviance explained is not reported for the GAMM.
-
-More information on `lme` can be found in Pinheiro and Bates (2000) and Wood (2006).
-
-
 # Model checking
 
 Fitting models is all well and good, but we'd like to confirm that the models we have are reasonable; `dsm` provides some functions for model checking.
@@ -522,25 +497,6 @@ rqgam.check(dsm.xy.tweedie)
 Here we can see that there is no issue with heteroskedasticity (no increase in spread in the residuals vs. linear predictor plot with increasing values of the linear predictor). One can also plot these residuals against covariate values to check for pattern in the residuals.
 
 Note that in general, plots other than "Resids vs. linear pred." should be interpreted with caution in the output of `rqgam.check` as the residuals generated are normal by construction (so for example the Q-Q plot and histogram of residuals will always look fine).
-
-
-## Autocorrelation
-
-In all spatial models we need to be aware of the issue of spatial autocorrelation. To check for residual autocorrelation we use the `dsm.cor` function:
-
-```{r echo=FALSE}
-fig_nums(name="dsm.xy-cor", caption="Residual autocorrelation in `dsm.xy`.", display=FALSE)
-```
-
-```{r dsm.xy-cor, fig.cap="", fig.height=5, fig.width=5}
-dsm.cor(dsm.xy, max.lag=10, Segment.Label="Sample.Label")
-```
-
-`r fig_nums("dsm.xy-cor")`
-
-The plot is shown in `r fig_c("dsm.xy-cor")`, and appears to have a spike at lag 6, but this is beyond the range of being interesting.
-
-Note that for data where there are many sample occasions over time, it may not be appropriate to simply plot the autocorrelogram over the whole data at once as this may confound spatial and temporal effects. In this case it would be more appropriate to plot an autocorrelogram for each sample occasion (e.g. by year or season).
 
 
 # Model selection
@@ -633,25 +589,24 @@ Here we see that there is not much of a change in the abundance, so in terms of 
 
 Obviously point estimates of abundance are important, but we should also calculate uncertainty around these abundance estimates. Fortunately `dsm` provides functions to perform these calculations and display the resulting uncertainty estimates.
 
-We can use the approach of Williams *et al* (2011), which allows us to incorporate both detection function uncertainty and spatial model (GAM) uncertainty in our estimates of the variance.
+There are two approaches to estimating the uncertainty of an abundance estimate in `dsm`.
 
-The `dsm.var.prop` function will estimate the variance of the abundance for each element in the list provided in `pred.data`. In our case we wish to obtain an abundance for each of the prediction cells, so we use `split` to chop our data set into list elements to give to `dsm.var.prop`.
+- `dsm.var.gam` which assumes that the spatial model and detection function parts of the model are independent of each other. In this case the squared coefficients of variation for each model component are added.
+- `dsm.var.prop` which takes into account the fact that detection probability may be correlated with the spatial part of the model. It uses methods described in [Bravington, Miller and Hedley, 2019](https://arxiv.org/abs/1807.07996). 
 
-```{r dsm.xy-varprop, cache=TRUE}
-preddata.varprop <- split(preddata, 1:nrow(preddata))
-dsm.xy.varprop <- dsm.var.prop(dsm.xy, pred.data=preddata.varprop,
-                               off.set=preddata$area)
+`dsm.var.prop` can only be applied when there is a covariate in the detection function that varies at the level of the segments, and is recorded at each segment (for example Beaufort). We don't have that situation here, so we opt for `dsm.var.gam`.
+
+ Both methods estimate the variance of the abundance for each element in the list provided in `pred.data`. In our case we wish to obtain an abundance for each of the prediction cells, so we use `split` to chop our data set into list elements to give to `dsm.var.gam` (or `dsm.var.prop`).
+
+```{r dsm.xy-var, cache=TRUE}
+preddata.var <- split(preddata, 1:nrow(preddata))
+dsm.xy.var <- dsm.var.gam(dsm.xy, pred.data=preddata.var,
+                          off.set=preddata$area)
 ```
 Calling `summary` will give some information about uncertainty estimation:
 ``` {r}
-summary(dsm.xy.varprop)
+summary(dsm.xy.var)
 ```
-The section titled `Quantiles of differences between fitted model and variance model` can be used to check the variance model does not have major problems (values much less than 1 indicate no issues).
-
-This method will only work when there are either no covariates in the detection function or when those that are there only vary at the scale of segments (e.g. the Beaufort sea state varies per segment so would be fine to include, but the observer may vary within transect for multiple observer surveys, so would not be appropriate to include).
-
-Note that for models where there are covariates at the individual level we cannot calculate the variance via the variance propagation method (`dsm.var.prop`) of Williams *et al* (2011). Instead we can use a GAM uncertainty estimation and combine it with the detection function uncertainty via the delta method (`dsm.var.gam`) which simply sums the squared coefficients of variation to get a total coefficient of variation (and therefore assumes that the detection process and spatial process are independent). There are no restrictions on the form of the detection function when using `dsm.var.gam`.
-
 
 ```{r echo=FALSE}
 fig_nums(name="dsm.xyvarplot", caption="Plot of the coefficient of variation for the study area with transect lines and observations overlaid. Note the increase in CV away from the transect lines.", display=FALSE)
@@ -659,9 +614,9 @@ fig_nums(name="dsm.xyvarplot", caption="Plot of the coefficient of variation for
 
 We can also make a plot of the CVs using the following code (`r fig_c("dsm.xyvarplot")`).
 ```{r dsm.xyvarplot, fig.cap=""}
-p <- ggplot() + grid_plot_obj(sqrt(dsm.xy.varprop$pred.var)/unlist(dsm.xy.varprop$pred),
+p <- ggplot() + grid_plot_obj(sqrt(dsm.xy.var$pred.var)/unlist(dsm.xy.var$pred),
                               "CV", pred.polys) + coord_equal() +gg.opts
-p <- p + geom_path(aes(x=x, y=y),data=survey.area)
+p <- p + geom_path(aes(x=x, y=y), data=survey.area)
 p <- p + geom_line(aes(x, y, group=Transect.Label), data=segdata)
 print(p)
 ```
@@ -671,9 +626,9 @@ print(p)
 
 We can revisit the model that included both depth and location smooths and observe that the coefficient of variation for that model is larger than that of the model with only the location smooth.
 ```{r dsm.xy.depth-varprop, cache=TRUE}
-dsm.xy.depth.varprop <- dsm.var.prop(dsm.xy.depth, pred.data=preddata.varprop,
-                                     off.set=preddata$area)
-summary(dsm.xy.depth.varprop)
+dsm.xy.depth.var <- dsm.var.gam(dsm.xy.depth, pred.data=preddata.var,
+                                off.set=preddata$area)
+summary(dsm.xy.depth.var)
 ```
 
 
